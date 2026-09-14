@@ -1,82 +1,147 @@
+import re
 import pymupdf
 
-def extract_all_text(pdf_path):
-    """Extracts text from all pages and merges it into one continuous string."""
-    try:
-        doc = pymupdf.open(pdf_path)
-        all_text = []
-        
-        for page_num in range(doc.page_count):
-            page = doc.load_page(page_num)
-            text = page.get_text()
-            if text.strip():
-                all_text.append(text)
-                
-        doc.close()
-        # Join pages with spaces to keep text continuous
-        return " ".join(all_text) 
-    except FileNotFoundError:
-        print(f"Error: The file '{pdf_path}' could not be found.")
-        return None
 
-def chunk_text(text, chunk_size=500, chunk_overlap=100):
+def extract_pages(pdf_path):
+    """Extract text from each PDF page while preserving page numbers."""
+
+    pages = []
+
+    with pymupdf.open(pdf_path) as doc:
+
+        for page_number, page in enumerate(doc, start=1):
+
+            text = page.get_text("text")
+
+            if not text.strip():
+                continue
+
+            # Clean excessive whitespace
+            text = re.sub(r"\s+", " ", text).strip()
+
+            pages.append({
+                "page": page_number,
+                "text": text
+            })
+
+    return pages
+
+
+def chunk_text(text, chunk_size=1000, overlap=200):
     """
-    Splits text into chunks of maximum character lengths with defined overlap.
-    Uses basic word boundary matching so it doesn't split words in half.
+    Split text into overlapping chunks.
+
+    chunk_size and overlap are measured in characters.
     """
+
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than 0.")
+
+    if overlap < 0:
+        raise ValueError("overlap cannot be negative.")
+
+    if overlap >= chunk_size:
+        raise ValueError("overlap must be smaller than chunk_size.")
+
     chunks = []
+
     start = 0
     text_length = len(text)
-    
+
     while start < text_length:
-        # Determine the target end position for this chunk
+
+        # Proposed end of this chunk
         end = min(start + chunk_size, text_length)
-        
-        # If we aren't at the very end of the text, try to snap to the nearest space 
-        # so we don't slice a word right down the middle
+
+        # If we're not at the end, try to break at a space
         if end < text_length:
-            # Look backward up to 30 characters for a clean space boundary
-            last_space = text.rfind(' ', end - 30, end)
-            if last_space != -1:
-                end = last_space
-        
-        # Extract the chunk
+
+            space_position = text.rfind(" ", start, end)
+
+            if space_position > start:
+                end = space_position
+
         chunk = text[start:end].strip()
+
         if chunk:
             chunks.append(chunk)
-            
-        # Move the starting point forward, factoring in the overlap
-        start = end - chunk_overlap
-        
-        # Safety catch: if the overlap math stalls the loop, force it forward
-        if start >= end:
-            start = end
-            
+
+        # We've reached the end of the document
+        if end >= text_length:
+            break
+
+        # Calculate next starting position
+        next_start = end - overlap
+
+        # Make absolutely sure we're moving forward
+        if next_start <= start:
+            next_start = end
+
+        start = next_start
+
     return chunks
 
+
+def create_chunks(pages, document_name):
+    """
+    Create RAG-ready chunks while preserving metadata.
+    """
+
+    all_chunks = []
+
+    for page in pages:
+
+        page_number = page["page"]
+        text = page["text"]
+
+        page_chunks = chunk_text(
+            text,
+            chunk_size=1000,
+            overlap=200
+        )
+
+        for index, chunk in enumerate(page_chunks):
+
+            all_chunks.append({
+                "id": f"{document_name}_page_{page_number}_chunk_{index}",
+                "text": chunk,
+                "metadata": {
+                    "document": document_name,
+                    "page": page_number,
+                    "chunk": index
+                }
+            })
+
+    return all_chunks
+
+
 if __name__ == "__main__":
-    # 1. Update this to your actual PDF file name
-    pdf_filename = "sample.pdf" 
-    
-    print("--- Phase 1: Extracting Raw Text ---")
-    raw_document_text = extract_all_text(pdf_filename)
-    
-    if raw_document_text:
-        print(f"Total characters extracted: {len(raw_document_text)}")
-        
-        print("\n--- Phase 2: Processing Text Chunks ---")
-        # Define our parameters (500 character chunks with 100 character overlap)
-        SIZE = 500
-        OVERLAP = 100
-        
-        document_chunks = chunk_text(raw_document_text, chunk_size=SIZE, chunk_overlap=OVERLAP)
-        
-        print(f"Created {len(document_chunks)} total chunks.")
-        print(f"Configuration: Size={SIZE} chars | Overlap={OVERLAP} chars\n")
-        
-        # Print the first 3 chunks to verify how the overlap looks
-        chunks_to_show = min(3, len(document_chunks))
-        for i in range(chunks_to_show):
-            print(f"=== CHUNK {i + 1} ===")
-            print(document_chunks[i])
-            print("=" * 15 + "\n")
+
+    pdf_path = "sample-local.pdf"
+    document_name = "sample-local.pdf"
+
+    print("Extracting PDF...")
+
+    pages = extract_pages(pdf_path)
+
+    print(f"Extracted {len(pages)} pages.")
+
+    print("\nCreating chunks...")
+
+    chunks = create_chunks(
+        pages,
+        document_name
+    )
+
+    print(f"Created {len(chunks)} chunks.")
+
+    print("\nFirst 3 chunks:")
+
+    for chunk in chunks[:3]:
+
+        print("\n" + "=" * 60)
+        print(f"ID: {chunk['id']}")
+        print(f"Page: {chunk['metadata']['page']}")
+        print("=" * 60)
+
+        print(chunk["text"])

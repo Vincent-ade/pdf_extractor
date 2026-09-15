@@ -1,3 +1,5 @@
+# VERSION 3
+
 import re
 import pymupdf
 from embedding import create_embeddings
@@ -117,8 +119,8 @@ def create_chunks(pages, document_name):
 
 if __name__ == "__main__":
 
-    pdf_path = "sample.pdf"
-    document_name = "sample.pdf"
+    pdf_path = "sample-local.pdf"
+    document_name = "sample-local.pdf"
 
     print("Extracting PDF...")
 
@@ -135,27 +137,13 @@ if __name__ == "__main__":
 
     print(f"Created {len(chunks)} chunks.")
 
-    print("\nCreating embeddings...")
+    print("\nFirst 3 chunks:")
 
-    chunks = create_embeddings(chunks)
+    for chunk in chunks[:3]:
 
-    print("Embeddings created successfully.")
+        print("\n" + "=" * 60)
+        print(f"ID: {chunk['id']}")
+        print(f"Page: {chunk['metadata']['page']}")
+        print("=" * 60)
 
-    print("\nFirst chunk:")
-
-    first_chunk = chunks[0]
-
-    print("\nID:")
-    print(first_chunk["id"])
-
-    print("\nPage:")
-    print(first_chunk["metadata"]["page"])
-
-    print("\nText:")
-    print(first_chunk["text"])
-
-    print("\nEmbedding:")
-    print(first_chunk["embedding"])
-
-    print("\nEmbedding dimensions:")
-    print(len(first_chunk["embedding"]))
+        print(chunk["text"])

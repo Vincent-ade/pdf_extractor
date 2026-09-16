@@ -1,6 +1,8 @@
 import re
 import pymupdf
 from embedding import create_embeddings
+from similarity_search import search
+
 
 def extract_pages(pdf_path):
     """Extract text from each PDF page while preserving page numbers."""
@@ -122,9 +124,16 @@ if __name__ == "__main__":
 
     print("Extracting PDF...")
 
+    # pages = extract_pages(pdf_path)
+
+    # print(f"Extracted {len(pages)} pages.")
+
     pages = extract_pages(pdf_path)
 
     print(f"Extracted {len(pages)} pages.")
+
+    print("\nFIRST PAGE:")
+    print(pages[0]["text"])
 
     print("\nCreating chunks...")
 
@@ -141,21 +150,26 @@ if __name__ == "__main__":
 
     print("Embeddings created successfully.")
 
-    print("\nFirst chunk:")
+    question = input("\nAsk a question about the PDF: ")
 
-    first_chunk = chunks[0]
+    results = search(
+        question,
+        chunks,
+        top_k=3
+    )
 
-    print("\nID:")
-    print(first_chunk["id"])
+    # NEW: Display the most relevant chunks
+    print("\nMost relevant chunks:")
 
-    print("\nPage:")
-    print(first_chunk["metadata"]["page"])
+    for result in results:
 
-    print("\nText:")
-    print(first_chunk["text"])
+        chunk = result["chunk"]
+        score = result["score"]
 
-    print("\nEmbedding:")
-    print(first_chunk["embedding"])
+        print("\n" + "=" * 60)
+        print(f"Similarity: {score:.4f}")
+        print(f"Page: {chunk['metadata']['page']}")
+        print(f"Chunk: {chunk['metadata']['chunk']}")
+        print("=" * 60)
 
-    print("\nEmbedding dimensions:")
-    print(len(first_chunk["embedding"]))
+        print(chunk["text"])

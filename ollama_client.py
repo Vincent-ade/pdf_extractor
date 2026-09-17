@@ -6,7 +6,6 @@ def build_context(results):
 
     for result in results:
         chunk = result["chunk"]
-
         context += chunk["text"] + "\n\n"
 
     return context
@@ -14,16 +13,24 @@ def build_context(results):
 
 def generate_answer(question, context):
     prompt = f"""
-Use the following context from a PDF to answer the question.
+You are answering a question using a PDF as your source.
 
-Context:
+Follow these rules:
+1. Answer the question directly.
+2. Use only information from the provided context.
+3. Do not list random keywords or phrases from the context.
+4. Explain the answer clearly and naturally.
+5. Keep the answer concise unless the question requires more detail.
+6. If the context does not contain enough information to answer the question, say:
+   "I couldn't find enough information in the document to answer that."
+
+Context from the PDF:
 {context}
 
 Question:
 {question}
 
-Answer using only the information provided in the context.
-If the answer cannot be found in the context, say you don't know.
+Direct answer:
 """
 
     response = ollama.chat(

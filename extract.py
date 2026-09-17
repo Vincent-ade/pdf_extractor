@@ -3,6 +3,9 @@ import pymupdf
 from embedding import create_embeddings
 from similarity_search import search
 
+from similarity_search import search
+from ollama_client import build_context, generate_answer
+
 
 def extract_pages(pdf_path):
     """Extract text from each PDF page while preserving page numbers."""
@@ -131,7 +134,7 @@ if __name__ == "__main__":
     pages = extract_pages(pdf_path)
 
     print(f"Extracted {len(pages)} pages.")
-
+    
     print("\nFIRST PAGE:")
     print(pages[0]["text"])
 
@@ -173,3 +176,18 @@ if __name__ == "__main__":
         print("=" * 60)
 
         print(chunk["text"])
+
+question = input("Ask a question about your PDF: ")
+
+results = search(question, chunks, top_k=3)
+
+context = build_context(results)
+
+print("\n--- Retrieved Context ---")
+print(context)
+print("------------------------")
+
+answer = generate_answer(question, context)
+
+print("\nAnswer:")
+print(answer)

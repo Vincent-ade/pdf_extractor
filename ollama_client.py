@@ -6,10 +6,18 @@ def build_context(results):
 
     for result in results:
         chunk = result["chunk"]
-        context += chunk["text"] + "\n\n"
+
+        context += f"""
+Document: {chunk["document"]}
+Page: {chunk["page"]}
+
+Content:
+{chunk["text"]}
+
+---
+"""
 
     return context
-
 
 def generate_answer(question, context):
     prompt = f"""
@@ -23,6 +31,7 @@ Follow these rules:
 5. Keep the answer concise unless the question requires more detail.
 6. If the context does not contain enough information to answer the question, say:
    "I couldn't find enough information in the document to answer that."
+7. When using information from the context, cite its page using [Page X].
 
 Context from the PDF:
 {context}

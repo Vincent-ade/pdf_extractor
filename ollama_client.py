@@ -1,6 +1,5 @@
 import ollama
 
-
 def build_context(results):
     context = ""
 

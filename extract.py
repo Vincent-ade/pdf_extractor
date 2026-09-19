@@ -181,6 +181,8 @@ if __name__ == "__main__":
 
 results = search(question, chunks, top_k=3)
 
+print(results[0]["chunk"])
+
 context = build_context(results)
 
 # print("\n--- Retrieved Context ---")

@@ -4,7 +4,7 @@ from embedding import create_embeddings
 from similarity_search import search
 
 from similarity_search import search
-from ollama_client import build_context, generate_answer
+from ollama_client import build_document_context, generate_answer
 from similarity_search import search, inspect_chunk
 
 
@@ -123,14 +123,10 @@ def create_chunks(pages, document_name):
 
 if __name__ == "__main__":
 
-    pdf_path = "sample.pdf"
-    document_name = "sample.pdf"
+    pdf_path = "sample-doc.pdf"
+    document_name = "sample-doc.pdf"
 
     print("Extracting PDF...")
-
-    # pages = extract_pages(pdf_path)
-
-    # print(f"Extracted {len(pages)} pages.")
 
     pages = extract_pages(pdf_path)
 
@@ -159,7 +155,7 @@ if __name__ == "__main__":
     results = search(
         question,
         chunks,
-        top_k=3
+        top_k=10
     )
 
     # NEW: Display the most relevant chunks
@@ -178,15 +174,27 @@ if __name__ == "__main__":
 
         print(chunk["text"])
 
-results = search(question, chunks, top_k=3)
+# results = search(question, chunks, top_k=3)
+# context, sources = build_context(results)
+# answer = generate_answer(question, context)
 
-# print(results[0].keys())
-# print(results[0]["chunk"].keys())
-# print(results[0]["chunk"]["metadata"])
-# context = build_context(results)
+context, sources = build_document_context(chunks)
 
-context, sources = build_context(results)
 answer = generate_answer(question, context)
+
+print("\nAnswer:")
+print(answer)
+
+print("\nSources:")
+
+unique_sources = set()
+
+for source in sources:
+    source_key = (source["document"], source["page"])
+
+    if source_key not in unique_sources:
+        print(f"- {source['document']} — Page {source['page']}")
+        unique_sources.add(source_key)
 
 print("\nAnswer:")
 print(answer)

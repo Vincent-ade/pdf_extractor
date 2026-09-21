@@ -1,11 +1,19 @@
 import ollama
 
-def build_context(results):
+def build_document_context(chunks):
     context_parts = []
     sources = []
 
-    for result in results:
-        chunk = result["chunk"]
+    # Arrange chunks in their original document order
+    sorted_chunks = sorted(
+        chunks,
+        key=lambda chunk: (
+            chunk["metadata"]["page"],
+            chunk["metadata"]["chunk"]
+        )
+    )
+
+    for chunk in sorted_chunks:
         text = chunk["text"]
         metadata = chunk["metadata"]
 

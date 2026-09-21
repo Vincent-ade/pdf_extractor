@@ -5,6 +5,7 @@ from similarity_search import search
 
 from similarity_search import search
 from ollama_client import build_context, generate_answer
+from similarity_search import search, inspect_chunk
 
 
 def extract_pages(pdf_path):
@@ -122,8 +123,8 @@ def create_chunks(pages, document_name):
 
 if __name__ == "__main__":
 
-    pdf_path = "sample-doc.pdf"
-    document_name = "sample-doc.pdf"
+    pdf_path = "sample.pdf"
+    document_name = "sample.pdf"
 
     print("Extracting PDF...")
 
@@ -177,17 +178,13 @@ if __name__ == "__main__":
 
         print(chunk["text"])
 
-# question = input("Ask a question about your PDF: ")
-
 results = search(question, chunks, top_k=3)
 
-print(results[0]["chunk"])
+# print(results[0].keys())
+# print(results[0]["chunk"].keys())
+# print(results[0]["chunk"]["metadata"])
 
 context = build_context(results)
-
-# print("\n--- Retrieved Context ---")
-# print(context)
-# print("------------------------")
 
 answer = generate_answer(question, context)
 

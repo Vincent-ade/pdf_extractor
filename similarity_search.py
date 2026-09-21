@@ -34,3 +34,21 @@ def search(question, chunks, top_k=3):
 
     # Return only the best results
     return results[:top_k]
+
+def inspect_chunk(chunk):
+    print("\n--- CHUNK STRUCTURE ---")
+
+    print("Top-level keys:")
+    print(list(chunk.keys()))
+
+    for key, value in chunk.items():
+        if key == "embedding":
+            print(f"{key}: <embedding hidden>")
+        elif isinstance(value, dict):
+            print(f"{key}:")
+            print(f"  Nested keys: {list(value.keys())}")
+            print(f"  Values: {value}")
+        else:
+            print(f"{key}: {value}")
+
+    print("-----------------------\n")

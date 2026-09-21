@@ -2,10 +2,10 @@ import ollama
 
 def build_context(results):
     context_parts = []
+    sources = []
 
     for result in results:
         chunk = result["chunk"]
-
         text = chunk["text"]
         metadata = chunk["metadata"]
 
@@ -13,11 +13,17 @@ def build_context(results):
         page = metadata["page"]
 
         context_parts.append(
-            f"[Document: {document} | Page: {page}]\n"
-            f"{text}"
+            f"[Document: {document} | Page: {page}]\n{text}"
         )
 
-    return "\n\n".join(context_parts)
+        sources.append({
+            "document": document,
+            "page": page
+        })
+
+    context = "\n\n".join(context_parts)
+
+    return context, sources
 
 def generate_answer(question, context):
     prompt = f"""

@@ -183,10 +183,15 @@ results = search(question, chunks, top_k=3)
 # print(results[0].keys())
 # print(results[0]["chunk"].keys())
 # print(results[0]["chunk"]["metadata"])
+# context = build_context(results)
 
-context = build_context(results)
-
+context, sources = build_context(results)
 answer = generate_answer(question, context)
 
 print("\nAnswer:")
 print(answer)
+
+print("\nSources:")
+
+for source in sources:
+    print(f"- {source['document']} — Page {source['page']}")

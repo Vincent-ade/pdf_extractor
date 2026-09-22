@@ -86,6 +86,8 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
     return chunks
 
+#testing
+
 
 def create_chunks(pages, document_name):
     """

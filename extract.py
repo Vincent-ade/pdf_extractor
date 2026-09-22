@@ -5,7 +5,6 @@ from similarity_search import search
 
 from similarity_search import search
 from ollama_client import build_document_context, generate_answer
-from similarity_search import search, inspect_chunk
 
 
 def extract_pages(pdf_path):
@@ -131,9 +130,10 @@ if __name__ == "__main__":
     pages = extract_pages(pdf_path)
 
     print(f"Extracted {len(pages)} pages.")
-    
-    print("\nFIRST PAGE:")
-    print(pages[0]["text"])
+
+    if not pages:
+        print("No text found in the PDF.")
+        exit()
 
     print("\nCreating chunks...")
 
@@ -152,54 +152,39 @@ if __name__ == "__main__":
 
     question = input("\nAsk a question about the PDF: ")
 
+    # Search the PDF (kept for future question-routing)
     results = search(
         question,
         chunks,
         top_k=10
     )
 
-    # NEW: Display the most relevant chunks
-    print("\nMost relevant chunks:")
+    # Build context from the entire document
+    context, sources = build_document_context(chunks)
 
-    for result in results:
+    # Generate answer using Ollama
+    answer = generate_answer(question, context)
 
-        chunk = result["chunk"]
-        score = result["score"]
+    # Display answer once
+    print("\nAnswer:")
+    print(answer)
 
-        print("\n" + "=" * 60)
-        print(f"Similarity: {score:.4f}")
-        print(f"Page: {chunk['metadata']['page']}")
-        print(f"Chunk: {chunk['metadata']['chunk']}")
-        print("=" * 60)
+    # Display sources once, with duplicates removed
+    print("\nSources:")
 
-        print(chunk["text"])
+    unique_sources = set()
 
-# results = search(question, chunks, top_k=3)
-# context, sources = build_context(results)
-# answer = generate_answer(question, context)
+    for source in sources:
 
-context, sources = build_document_context(chunks)
+        source_key = (
+            source["document"],
+            source["page"]
+        )
 
-answer = generate_answer(question, context)
+        if source_key not in unique_sources:
 
-print("\nAnswer:")
-print(answer)
+            print(
+                f"- {source['document']} — Page {source['page']}"
+            )
 
-print("\nSources:")
-
-unique_sources = set()
-
-for source in sources:
-    source_key = (source["document"], source["page"])
-
-    if source_key not in unique_sources:
-        print(f"- {source['document']} — Page {source['page']}")
-        unique_sources.add(source_key)
-
-print("\nAnswer:")
-print(answer)
-
-print("\nSources:")
-
-for source in sources:
-    print(f"- {source['document']} — Page {source['page']}")
+            unique_sources.add(source_key)

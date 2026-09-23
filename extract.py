@@ -190,6 +190,15 @@ if __name__ == "__main__":
         top_k=3
     )
 
+    from ollama_client import create_chunk_batches
+
+    batches = create_chunk_batches(chunks, batch_size=5)
+
+    print(f"Total batches: {len(batches)}")
+
+    for i, batch in enumerate(batches, start=1):
+        print(f"Batch {i}: {len(batch)} chunks")
+
     # Choose the appropriate retrieval strategy
     if is_document_wide_question(question):
 

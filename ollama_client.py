@@ -103,3 +103,18 @@ Answer:
     )
 
     return response["message"]["content"]
+
+def create_chunk_batches(chunks, batch_size=5):
+    """
+    Group document chunks into smaller batches.
+
+    Each batch contains up to batch_size chunks.
+    """
+
+    batches = []
+
+    for i in range(0, len(chunks), batch_size):
+        batch = chunks[i:i + batch_size]
+        batches.append(batch)
+
+    return batches

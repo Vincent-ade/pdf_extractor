@@ -1,5 +1,36 @@
 import ollama
 
+def build_context(results):
+    """
+    Build context from the most relevant retrieved chunks.
+    Used for focused questions.
+    """
+
+    context_parts = []
+    sources = []
+
+    for result in results:
+
+        chunk = result["chunk"]
+        text = chunk["text"]
+        metadata = chunk["metadata"]
+
+        document = metadata["document"]
+        page = metadata["page"]
+
+        context_parts.append(
+            f"[Document: {document} | Page: {page}]\n{text}"
+        )
+
+        sources.append({
+            "document": document,
+            "page": page
+        })
+
+    context = "\n\n".join(context_parts)
+
+    return context, sources
+
 def build_document_context(chunks):
     context_parts = []
     sources = []
@@ -35,25 +66,30 @@ def build_document_context(chunks):
 
 def generate_answer(question, context):
     prompt = f"""
-You are answering a question using a PDF as your source.
+You are a helpful assistant answering questions about a PDF document.
 
-Follow these rules:
-1. Answer the question directly.
-2. Use only information from the provided context.
-3. Do not list random keywords or phrases from the context.
-4. Explain the answer clearly and naturally.
-5. Keep the answer concise unless the question requires more detail.
-6. If the context does not contain enough information to answer the question, say:
+Your task is to answer the user's question directly, clearly, and accurately
+using only the provided context.
+
+Instructions:
+1. Answer the specific question first.
+2. Do not simply list every point in the context.
+3. Include additional points only when they directly help answer the question.
+4. Explain the main idea in simple, understandable language.
+5. If the question asks for all points, provide all relevant points.
+6. Do not invent information that is not in the context.
+7. Do not create page numbers or citations. Sources are handled separately
+   by the Python application.
+8. If the answer cannot be found in the context, say:
    "I couldn't find enough information in the document to answer that."
-7. When using information from the context, cite its page using [Page X].
 
-Context from the PDF:
+Context:
 {context}
 
 Question:
 {question}
 
-Direct answer:
+Answer:
 """
 
     response = ollama.chat(

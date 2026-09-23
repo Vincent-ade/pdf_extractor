@@ -187,7 +187,7 @@ if __name__ == "__main__":
     results = search(
         question,
         chunks,
-        top_k=10
+        top_k=3
     )
 
     # Choose the appropriate retrieval strategy

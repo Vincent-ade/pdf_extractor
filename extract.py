@@ -4,7 +4,11 @@ from embedding import create_embeddings
 from similarity_search import search
 
 from similarity_search import search
-from ollama_client import build_document_context, generate_answer
+from ollama_client import (
+    build_context,
+    build_document_context,
+    generate_answer
+)
 
 
 def extract_pages(pdf_path):
@@ -121,6 +125,31 @@ def create_chunks(pages, document_name):
 
     return all_chunks
 
+def is_document_wide_question(question):
+    """
+    Detect questions that require information
+    from across the entire document.
+    """
+
+    keywords = [
+        "all points",
+        "all the points",
+        "entire document",
+        "whole document",
+        "summarize",
+        "summary",
+        "everything",
+        "list all",
+        "main points",
+        "key points"
+    ]
+
+    question = question.lower()
+
+    return any(
+        keyword in question
+        for keyword in keywords
+    )
 
 if __name__ == "__main__":
 
@@ -161,8 +190,19 @@ if __name__ == "__main__":
         top_k=10
     )
 
-    # Build context from the entire document
-    context, sources = build_document_context(chunks)
+    # Choose the appropriate retrieval strategy
+    if is_document_wide_question(question):
+
+        print("\nMode: Document-wide Q&A")
+
+        context, sources = build_document_context(chunks)
+
+    else:
+
+        print("\nMode: Focused Q&A")
+
+        context, sources = build_context(results)
+
 
     # Generate answer using Ollama
     answer = generate_answer(question, context)

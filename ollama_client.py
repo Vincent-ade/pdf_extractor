@@ -80,7 +80,10 @@ Instructions:
 6. Do not invent information that is not in the context.
 7. Do not create page numbers or citations. Sources are handled separately
    by the Python application.
-8. If the answer cannot be found in the context, say:
+8. Do not add explanations, descriptions, or extra information when they are not requested.
+9. If the user asks for a point, title, name, or list item, return only what was requested.
+10.Follow the user's instructions exactly.
+11. If the answer cannot be found in the context, say:
    "I couldn't find enough information in the document to answer that."
 
 Context:

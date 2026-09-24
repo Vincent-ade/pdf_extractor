@@ -2,6 +2,8 @@ import re
 import pymupdf
 from embedding import create_embeddings
 from similarity_search import search
+
+from similarity_search import search
 from ollama_client import (
     build_context,
     build_document_context,
@@ -13,51 +15,76 @@ from ollama_client import (
 
 def extract_pages(pdf_path):
     """Extract text from each PDF page while preserving page numbers."""
+
     pages = []
+
     with pymupdf.open(pdf_path) as doc:
+
         for page_number, page in enumerate(doc, start=1):
+
             text = page.get_text("text")
+
             if not text.strip():
                 continue
-            
+
             # Clean excessive whitespace
             text = re.sub(r"\s+", " ", text).strip()
+
             pages.append({
                 "page": page_number,
                 "text": text
             })
+
     return pages
 
 
 def chunk_text(text, chunk_size=1000, overlap=200):
-    """Split text into overlapping chunks (character-based)."""
+    """
+    Split text into overlapping chunks.
+
+    chunk_size and overlap are measured in characters.
+    """
+
     if chunk_size <= 0:
         raise ValueError("chunk_size must be greater than 0.")
+
     if overlap < 0:
         raise ValueError("overlap cannot be negative.")
+
     if overlap >= chunk_size:
         raise ValueError("overlap must be smaller than chunk_size.")
 
     chunks = []
+
     start = 0
     text_length = len(text)
 
     while start < text_length:
+
+        # Proposed end of this chunk
         end = min(start + chunk_size, text_length)
 
+        # If we're not at the end, try to break at a space
         if end < text_length:
+
             space_position = text.rfind(" ", start, end)
+
             if space_position > start:
                 end = space_position
 
         chunk = text[start:end].strip()
+
         if chunk:
             chunks.append(chunk)
 
+        # We've reached the end of the document
         if end >= text_length:
             break
 
+        # Calculate next starting position
         next_start = end - overlap
+
+        # Make absolutely sure we're moving forward
         if next_start <= start:
             next_start = end
 
@@ -65,17 +92,29 @@ def chunk_text(text, chunk_size=1000, overlap=200):
 
     return chunks
 
+#testing
+
 
 def create_chunks(pages, document_name):
-    """Create RAG-ready chunks while preserving metadata."""
+    """
+    Create RAG-ready chunks while preserving metadata.
+    """
+
     all_chunks = []
+
     for page in pages:
+
         page_number = page["page"]
         text = page["text"]
 
-        page_chunks = chunk_text(text, chunk_size=1000, overlap=200)
+        page_chunks = chunk_text(
+            text,
+            chunk_size=1000,
+            overlap=200
+        )
 
         for index, chunk in enumerate(page_chunks):
+
             all_chunks.append({
                 "id": f"{document_name}_page_{page_number}_chunk_{index}",
                 "text": chunk,
@@ -85,25 +124,44 @@ def create_chunks(pages, document_name):
                     "chunk": index
                 }
             })
+
     return all_chunks
 
-
 def is_document_wide_question(question):
-    """Detect questions that require information from across the entire document."""
-    keywords = [
-        "all points", "all the points", "entire document", "whole document",
-        "summarize", "summary", "everything", "list all", "main points", "key points"
-    ]
-    question = question.lower()
-    return any(keyword in question for keyword in keywords)
+    """
+    Detect questions that require information
+    from across the entire document.
+    """
 
+    keywords = [
+        "all points",
+        "all the points",
+        "entire document",
+        "whole document",
+        "summarize",
+        "summary",
+        "everything",
+        "list all",
+        "main points",
+        "key points"
+    ]
+
+    question = question.lower()
+
+    return any(
+        keyword in question
+        for keyword in keywords
+    )
 
 if __name__ == "__main__":
+
     pdf_path = "sample-doc.pdf"
     document_name = "sample-doc.pdf"
 
     print("Extracting PDF...")
+
     pages = extract_pages(pdf_path)
+
     print(f"Extracted {len(pages)} pages.")
 
     if not pages:
@@ -111,12 +169,21 @@ if __name__ == "__main__":
         exit()
 
     print("\nCreating chunks...")
-    chunks = create_chunks(pages, document_name)
+
+    chunks = create_chunks(
+        pages,
+        document_name
+    )
+
     print(f"Created {len(chunks)} chunks.")
 
     print("\nCreating embeddings...")
+
     chunks = create_embeddings(chunks)
+
     print("Embeddings created successfully.")
+
+    # question = input("\nAsk a question about the PDF: ")
 
     while True:
         print("\nWhat would you like to do?")
@@ -129,43 +196,29 @@ if __name__ == "__main__":
         if choice == "1":
             question = input("\nEnter your question: ")
 
-            # Select the appropriate retrieval strategy based on intent routing
-            if is_document_wide_question(question):
-                print("\nMode: Document-wide Q&A")
-                context, sources = build_document_context(chunks)
-            else:
-                print("\nMode: Focused Q&A")
-                results = search(question, chunks, top_k=3)
-                context, sources = build_context(results)
+            results = search(question, chunks, top_k=3)
 
-            # Generate and print the answer
+            context, sources = build_context(results)
+
             answer = generate_answer(question, context)
+
             print("\nANSWER:")
             print(answer)
 
-            # Display unique sources cleanly
             print("\nSOURCES:")
-            unique_sources = set()
             for source in sources:
-                # Handle dictionary formats or standard strings returned from ollama_client
-                if isinstance(source, dict):
-                    source_key = (source.get("document"), source.get("page"))
-                    if source_key not in unique_sources:
-                        print(f"- {source_key[0]} — Page {source_key[1]}")
-                        unique_sources.add(source_key)
-                else:
-                    if source not in unique_sources:
-                        print(source)
-                        unique_sources.add(source)
+                print(source)
 
         elif choice == "2":
             print("\nSummarization selected.")
+
             batches = create_chunk_batches(chunks, batch_size=5)
-            print(f"Total batches to summarize: {len(batches)}")
 
             for i, batch in enumerate(batches, start=1):
                 print(f"\nSummarizing batch {i} of {len(batches)}...")
+
                 summary = summarize_batch(batch)
+
                 print(f"\nBATCH {i} SUMMARY:")
                 print(summary)
 
@@ -175,3 +228,65 @@ if __name__ == "__main__":
 
         else:
             print("\nInvalid choice. Please select 1, 2, or 3.")
+
+        # Search the PDF (kept for future question-routing)
+        results = search(
+            question,
+            chunks,
+            top_k=3
+        )
+
+        from ollama_client import create_chunk_batches
+
+        batches = create_chunk_batches(chunks, batch_size=5)
+
+        print(f"Total batches: {len(batches)}")
+
+        for i, batch in enumerate(batches, start=1):
+            print(f"Batch {i}: {len(batch)} chunks")
+
+        first_batch_summary = summarize_batch(batches[0])
+
+        print("\nFIRST BATCH SUMMARY:")
+        print(first_batch_summary)
+
+        # Choose the appropriate retrieval strategy
+        if is_document_wide_question(question):
+
+            print("\nMode: Document-wide Q&A")
+
+            context, sources = build_document_context(chunks)
+
+        else:
+
+            print("\nMode: Focused Q&A")
+
+            context, sources = build_context(results)
+
+
+        # Generate answer using Ollama
+        answer = generate_answer(question, context)
+
+        # Display answer once
+        print("\nAnswer:")
+        print(answer)
+
+        # Display sources once, with duplicates removed
+        print("\nSources:")
+
+        unique_sources = set()
+
+        for source in sources:
+
+            source_key = (
+                source["document"],
+                source["page"]
+            )
+
+            if source_key not in unique_sources:
+
+                print(
+                    f"- {source['document']} — Page {source['page']}"
+                )
+
+                unique_sources.add(source_key)

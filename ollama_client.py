@@ -118,3 +118,45 @@ def create_chunk_batches(chunks, batch_size=5):
         batches.append(batch)
 
     return batches
+
+def summarize_batch(batch):
+    """
+    Summarize a batch of document chunks.
+    """
+
+    batch_text = ""
+
+    for chunk in batch:
+        page = chunk["metadata"]["page"]
+        text = chunk["text"]
+
+        batch_text += f"\n[Page {page}]\n{text}\n"
+
+    prompt = f"""
+You are summarizing part of a PDF document.
+
+Summarize the following text by identifying:
+- The main ideas
+- Important facts
+- Key explanations
+- Important examples
+
+Stay faithful to the text.
+Do not invent information.
+Do not answer questions outside the provided text.
+
+TEXT:
+{batch_text}
+"""
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response["message"]["content"]

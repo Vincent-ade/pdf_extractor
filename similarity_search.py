@@ -1,54 +1,51 @@
 from sentence_transformers import SentenceTransformer, util
 
-
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-def search(question, chunks, top_k=3):
-    # Convert the question into an embedding
+def search(question, chunks, top_k=3, threshold=0.35):
+    """
+    Find the most relevant chunks for a question.
+
+    If the best similarity score is below the threshold,
+    the question is considered unrelated to the document.
+    """
+
     question_embedding = model.encode(question)
 
-    # Get the embeddings from our PDF chunks
-    chunk_embeddings = [chunk["embedding"] for chunk in chunks]
+    chunk_embeddings = [
+        chunk["embedding"]
+        for chunk in chunks
+    ]
 
-    # Compare the question with every chunk
     similarities = util.cos_sim(
         question_embedding,
         chunk_embeddings
     )[0]
 
-    # Attach the similarity score to each chunk
     results = []
 
-    for chunk, score in zip(chunks, similarities):
+    for i, score in enumerate(similarities):
+
         results.append({
-            "chunk": chunk,
+            "chunk": chunks[i],
             "score": float(score)
         })
 
-    # Highest similarity first
     results.sort(
-        key=lambda result: result["score"],
+        key=lambda x: x["score"],
         reverse=True
     )
 
-    # Return only the best results
-    return results[:top_k]
+    results = results[:top_k]
 
-def inspect_chunk(chunk):
-    print("\n--- CHUNK STRUCTURE ---")
+    if not results:
+        return []
 
-    print("Top-level keys:")
-    print(list(chunk.keys()))
+    # Check the best matching result
+    best_score = results[0]["score"]
 
-    for key, value in chunk.items():
-        if key == "embedding":
-            print(f"{key}: <embedding hidden>")
-        elif isinstance(value, dict):
-            print(f"{key}:")
-            print(f"  Nested keys: {list(value.keys())}")
-            print(f"  Values: {value}")
-        else:
-            print(f"{key}: {value}")
+    if best_score < threshold:
+        return []
 
-    print("-----------------------\n")
+    return results

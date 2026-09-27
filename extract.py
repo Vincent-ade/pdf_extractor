@@ -154,8 +154,18 @@ def ask_question(question, chunks):
     results = search(
         question,
         chunks,
-        top_k=3
+        top_k=3,
+        threshold=0.35
     )
+
+    # No relevant information found
+    if not results:
+
+        print(
+            "\nI could not find the answer in the document."
+        )
+
+        return
 
     if is_document_wide_question(question):
 

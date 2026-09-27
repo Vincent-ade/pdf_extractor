@@ -163,3 +163,53 @@ TEXT:
     )
 
     return response["message"]["content"]
+
+def combine_summaries(summaries):
+    """
+    Combine individual batch summaries into one final
+    document summary.
+    """
+
+    combined_text = ""
+
+    for i, summary in enumerate(summaries, start=1):
+
+        combined_text += (
+            f"\n\n--- BATCH {i} SUMMARY ---\n"
+            f"{summary}"
+        )
+
+    prompt = f"""
+You are creating a final summary of a PDF document.
+
+The text below contains summaries of different sections
+of the same document.
+
+Create ONE clear and organized summary by combining
+the important information from all sections.
+
+RULES:
+1. Preserve the main points and important details.
+2. Avoid unnecessary repetition.
+3. Do not invent information.
+4. Organize the summary logically.
+5. Do not mention batch summaries in your final answer.
+6. Use headings or bullet points where helpful.
+
+BATCH SUMMARIES:
+{combined_text}
+
+FINAL DOCUMENT SUMMARY:
+"""
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    return response["message"]["content"]

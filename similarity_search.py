@@ -3,14 +3,7 @@ from sentence_transformers import SentenceTransformer, util
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
-def search(question, chunks, top_k=3, threshold=0.35):
-    """
-    Find the most relevant chunks for a question.
-
-    If the best similarity score is below the threshold,
-    the question is considered unrelated to the document.
-    """
-
+def search(question, chunks, top_k=3):
     question_embedding = model.encode(question)
 
     chunk_embeddings = [
@@ -37,15 +30,4 @@ def search(question, chunks, top_k=3, threshold=0.35):
         reverse=True
     )
 
-    results = results[:top_k]
-
-    if not results:
-        return []
-
-    # Check the best matching result
-    best_score = results[0]["score"]
-
-    if best_score < threshold:
-        return []
-
-    return results
+    return results[:top_k]

@@ -147,25 +147,21 @@ def is_document_wide_question(question):
 
 
 def ask_question(question, chunks):
-    """
-    Answer a question using the appropriate retrieval strategy.
-    """
 
     results = search(
         question,
         chunks,
-        top_k=3,
-        threshold=0.35
+        top_k=3
     )
 
-    # No relevant information found
     if not results:
-
-        print(
-            "\nI could not find the answer in the document."
-        )
-
+        print("\nI could not find the answer in the document.")
         return
+
+    print("\nSimilarity scores:")
+
+    for result in results:
+        print(f"- {result['score']:.4f}")
 
     if is_document_wide_question(question):
 

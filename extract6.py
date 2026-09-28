@@ -1,4 +1,3 @@
-import os
 import re
 import pymupdf
 
@@ -10,8 +9,7 @@ from ollama_client import (
     build_document_context,
     create_chunk_batches,
     generate_answer,
-    summarize_batch,
-    combine_summaries
+    summarize_batch
 )
 
 
@@ -29,6 +27,7 @@ def extract_pages(pdf_path):
             if not text.strip():
                 continue
 
+            # Clean excessive whitespace
             text = re.sub(r"\s+", " ", text).strip()
 
             pages.append({
@@ -42,6 +41,8 @@ def extract_pages(pdf_path):
 def chunk_text(text, chunk_size=1000, overlap=200):
     """
     Split text into overlapping chunks.
+
+    chunk_size and overlap are measured in characters.
     """
 
     if chunk_size <= 0:
@@ -154,35 +155,25 @@ def ask_question(question, chunks):
     )
 
     if not results:
-
-        print(
-            "\nI could not find the answer in the document."
-        )
-
+        print("\nI could not find the answer in the document.")
         return
 
     print("\nSimilarity scores:")
 
     for result in results:
-        print(
-            f"- {result['score']:.4f}"
-        )
+        print(f"- {result['score']:.4f}")
 
     if is_document_wide_question(question):
 
         print("\nMode: Document-wide Q&A")
 
-        context, sources = build_document_context(
-            chunks
-        )
+        context, sources = build_document_context(chunks)
 
     else:
 
         print("\nMode: Focused Q&A")
 
-        context, sources = build_context(
-            results
-        )
+        context, sources = build_context(results)
 
     answer = generate_answer(
         question,
@@ -213,6 +204,9 @@ def ask_question(question, chunks):
 
 
 def summarize_document(chunks):
+    """
+    Summarize the document in batches.
+    """
 
     batches = create_chunk_batches(
         chunks,
@@ -225,137 +219,35 @@ def summarize_document(chunks):
 
     summaries = []
 
-    for i, batch in enumerate(
-        batches,
-        start=1
-    ):
+    for i, batch in enumerate(batches, start=1):
 
         print(
-            f"\nProcessing batch {i} "
-            f"of {len(batches)}..."
+            f"\nSummarizing batch {i} of {len(batches)}..."
         )
 
         summary = summarize_batch(batch)
 
         summaries.append(summary)
 
-    print("\nCombining batch summaries...")
+        print(f"\nBATCH {i} SUMMARY:")
+        print(summary)
 
-    final_summary = combine_summaries(
-        summaries
-    )
-
-    print("\n" + "=" * 50)
-    print("FINAL DOCUMENT SUMMARY")
-    print("=" * 50)
-
-    print(final_summary)
-
-    print("=" * 50)
-
-
-def get_pdf_files(pdf_folder):
-
-    files = []
-
-    for filename in os.listdir(pdf_folder):
-
-        if filename.lower().endswith(".pdf"):
-
-            files.append(filename)
-
-    return sorted(files)
-
-
-def choose_pdf(pdf_folder):
-
-    pdf_files = get_pdf_files(
-        pdf_folder
-    )
-
-    if not pdf_files:
-
-        print(
-            "\nNo PDF files found in the pdfs folder."
-        )
-
-        return None
-
-    print("\nAvailable PDFs:")
-
-    for index, filename in enumerate(
-        pdf_files,
-        start=1
-    ):
-
-        print(
-            f"{index}. {filename}"
-        )
-
-    while True:
-
-        choice = input(
-            "\nChoose a PDF: "
-        ).strip()
-
-        if not choice.isdigit():
-
-            print(
-                "Please enter a number."
-            )
-
-            continue
-
-        choice = int(choice)
-
-        if 1 <= choice <= len(pdf_files):
-
-            return pdf_files[choice - 1]
-
-        print(
-            "Invalid choice. Please select "
-            "one of the numbers shown."
-        )
+    return summaries
 
 
 if __name__ == "__main__":
 
-    pdf_folder = "pdfs"
+    pdf_path = "sample-doc.pdf"
+    document_name = "sample-doc.pdf"
 
-    selected_pdf = choose_pdf(
-        pdf_folder
-    )
+    print("Extracting PDF...")
 
-    if selected_pdf is None:
-        exit()
+    pages = extract_pages(pdf_path)
 
-    pdf_path = os.path.join(
-        pdf_folder,
-        selected_pdf
-    )
-
-    document_name = selected_pdf
-
-    print(
-        f"\nSelected PDF: {document_name}"
-    )
-
-    print("\nExtracting PDF...")
-
-    pages = extract_pages(
-        pdf_path
-    )
-
-    print(
-        f"Extracted {len(pages)} pages."
-    )
+    print(f"Extracted {len(pages)} pages.")
 
     if not pages:
-
-        print(
-            "No text found in the PDF."
-        )
-
+        print("No text found in the PDF.")
         exit()
 
     print("\nCreating chunks...")
@@ -365,19 +257,13 @@ if __name__ == "__main__":
         document_name
     )
 
-    print(
-        f"Created {len(chunks)} chunks."
-    )
+    print(f"Created {len(chunks)} chunks.")
 
     print("\nCreating embeddings...")
 
-    chunks = create_embeddings(
-        chunks
-    )
+    chunks = create_embeddings(chunks)
 
-    print(
-        "Embeddings created successfully."
-    )
+    print("Embeddings created successfully.")
 
     while True:
 
@@ -388,9 +274,7 @@ if __name__ == "__main__":
         print("3. Exit")
         print("=" * 40)
 
-        choice = input(
-            "\nChoose an option: "
-        ).strip()
+        choice = input("\nChoose an option: ").strip()
 
         if choice == "1":
 
@@ -399,11 +283,7 @@ if __name__ == "__main__":
             ).strip()
 
             if not question:
-
-                print(
-                    "\nPlease enter a question."
-                )
-
+                print("\nPlease enter a question.")
                 continue
 
             ask_question(
@@ -413,23 +293,17 @@ if __name__ == "__main__":
 
         elif choice == "2":
 
-            print(
-                "\nSummarization selected."
-            )
+            print("\nSummarization selected.")
 
-            summarize_document(
-                chunks
-            )
+            summarize_document(chunks)
 
         elif choice == "3":
 
             print("\nGoodbye!")
-
             break
 
         else:
 
             print(
-                "\nInvalid choice. "
-                "Please select 1, 2, or 3."
+                "\nInvalid choice. Please select 1, 2, or 3."
             )

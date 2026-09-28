@@ -1,5 +1,6 @@
 import os
 import re
+import pickle
 import pymupdf
 
 from embedding import create_embeddings
@@ -317,6 +318,58 @@ def choose_pdf(pdf_folder):
             "one of the numbers shown."
         )
 
+def get_cache_path(document_name):
+    """
+    Return the cache file path for a document.
+    """
+
+    cache_name = os.path.splitext(document_name)[0] + ".pkl"
+
+    return os.path.join(
+        "cache",
+        cache_name
+    )
+
+
+def save_embeddings(chunks, pdf_path, cache_path):
+    """
+    Save embedded chunks and the PDF modification time.
+    """
+
+    cache_data = {
+        "pdf_modified": os.path.getmtime(pdf_path),
+        "chunks": chunks
+    }
+
+    with open(cache_path, "wb") as file:
+        pickle.dump(cache_data, file)
+
+
+def load_embeddings(pdf_path, cache_path):
+    """
+    Load cached embeddings if the PDF has not changed.
+    """
+
+    if not os.path.exists(cache_path):
+        return None
+
+    try:
+
+        with open(cache_path, "rb") as file:
+            cache_data = pickle.load(file)
+
+        current_modified = os.path.getmtime(
+            pdf_path
+        )
+
+        if cache_data["pdf_modified"] != current_modified:
+            return None
+
+        return cache_data["chunks"]
+
+    except Exception:
+        return None
+
 
 if __name__ == "__main__":
 
@@ -369,15 +422,42 @@ if __name__ == "__main__":
         f"Created {len(chunks)} chunks."
     )
 
-    print("\nCreating embeddings...")
-
-    chunks = create_embeddings(
-        chunks
+    cache_path = get_cache_path(
+        document_name
     )
 
-    print(
-        "Embeddings created successfully."
+    cached_chunks = load_embeddings(
+        pdf_path,
+        cache_path
     )
+
+    if cached_chunks is not None:
+
+        print("\nLoading cached embeddings...")
+
+        chunks = cached_chunks
+
+        print(
+            "Cached embeddings loaded successfully."
+        )
+
+    else:
+
+        print("\nCreating embeddings...")
+
+        chunks = create_embeddings(
+            chunks
+        )
+
+        save_embeddings(
+            chunks,
+            pdf_path,
+            cache_path
+        )
+
+        print(
+            "Embeddings created and cached successfully."
+        )
 
     while True:
 

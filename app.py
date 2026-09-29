@@ -44,18 +44,47 @@ st.write(
 )
 
 
+
+#
 # --------------------------------------------------
-# PDF UPLOAD AND PROCESSING
+# PDF LIBRARY AND PROCESSING
 # --------------------------------------------------
 
-uploaded_file = st.file_uploader(
-    "Upload your PDF",
-    type=["pdf"],
+saved_pdf_names = sorted(
+    filename
+    for filename in os.listdir(PDF_FOLDER)
+    if filename.lower().endswith(".pdf")
 )
 
-if uploaded_file is not None:
+st.subheader("Your PDF library")
 
-    if st.button("Process PDF", type="primary"):
+selected_pdfs = st.multiselect(
+    "Select PDFs already in your library",
+    options=saved_pdf_names,
+    help="You can select multiple PDFs to use together.",
+)
+
+uploaded_files = st.file_uploader(
+    "Or upload new PDFs",
+    type=["pdf"],
+    accept_multiple_files=True,
+    key="pdf_library_upload",
+)
+
+if st.button("Process selected PDFs", type="primary"):
+
+    # Map document names to their local file paths.
+    files_to_process = {}
+
+    for filename in selected_pdfs:
+        files_to_process[filename] = os.path.join(
+            PDF_FOLDER,
+            filename,
+        )
+
+    # Save newly uploaded files without rewriting
+    # files whose contents have not changed.
+    for uploaded_file in uploaded_files or []:
 
         document_name = os.path.basename(
             uploaded_file.name
@@ -66,75 +95,134 @@ if uploaded_file is not None:
             document_name,
         )
 
-        file_bytes = uploaded_file.getvalue()
+        new_bytes = uploaded_file.getvalue()
 
-        # Avoid rewriting an unchanged file.
-        if (
-            not os.path.exists(pdf_path)
-            or open(pdf_path, "rb").read() != file_bytes
-        ):
+        existing_bytes = None
+
+        if os.path.exists(pdf_path):
+            with open(pdf_path, "rb") as file:
+                existing_bytes = file.read()
+
+        if existing_bytes != new_bytes:
             with open(pdf_path, "wb") as file:
-                file.write(file_bytes)
+                file.write(new_bytes)
 
-        cache_path = get_cache_path(document_name)
+        files_to_process[document_name] = pdf_path
+
+    if not files_to_process:
+
+        st.warning(
+            "Select at least one saved PDF or upload a new PDF."
+        )
+
+    else:
+
+        all_chunks = []
+        processed_names = []
+
+        progress = st.progress(0)
+        status = st.empty()
 
         try:
 
-            with st.spinner("Preparing your PDF..."):
+            with st.spinner("Processing your PDFs..."):
 
-                chunks = load_embeddings(
-                    pdf_path,
-                    cache_path,
-                )
+                total_files = len(files_to_process)
 
-                if chunks is not None:
+                for index, (document_name, pdf_path) in enumerate(
+                    files_to_process.items(),
+                    start=1,
+                ):
 
-                    st.info(
-                        "Loaded existing embeddings from cache."
+                    status.write(
+                        f"Processing {document_name} "
+                        f"({index}/{total_files})..."
                     )
 
-                else:
-
-                    pages = extract_pages(pdf_path)
-
-                    if not pages:
-                        st.error(
-                            "No readable text was found in this PDF."
-                        )
-                        st.stop()
-
-                    chunks = create_chunks(
-                        pages,
-                        document_name,
+                    cache_path = get_cache_path(
+                        document_name
                     )
 
-                    if not chunks:
-                        st.error(
-                            "No text chunks could be created."
-                        )
-                        st.stop()
-
-                    chunks = create_embeddings(chunks)
-
-                    save_embeddings(
-                        chunks,
+                    # Reuse cached embeddings when valid.
+                    chunks = load_embeddings(
                         pdf_path,
                         cache_path,
                     )
 
-                st.session_state["chunks"] = chunks
-                st.session_state["document_name"] = (
-                    document_name
+                    if chunks is None:
+
+                        pages = extract_pages(pdf_path)
+
+                        if not pages:
+                            st.warning(
+                                f"No readable text found in "
+                                f"{document_name}. Skipping it."
+                            )
+                            progress.progress(
+                                index / total_files
+                            )
+                            continue
+
+                        chunks = create_chunks(
+                            pages,
+                            document_name,
+                        )
+
+                        if not chunks:
+                            st.warning(
+                                f"No text chunks created for "
+                                f"{document_name}. Skipping it."
+                            )
+                            progress.progress(
+                                index / total_files
+                            )
+                            continue
+
+                        chunks = create_embeddings(chunks)
+
+                        save_embeddings(
+                            chunks,
+                            pdf_path,
+                            cache_path,
+                        )
+
+                    all_chunks.extend(chunks)
+                    processed_names.append(document_name)
+
+                    progress.progress(
+                        index / total_files
+                    )
+
+            progress.empty()
+            status.empty()
+
+            if not all_chunks:
+
+                st.error(
+                    "No readable text was found in the selected PDFs."
                 )
+
+            else:
+
+                st.session_state["chunks"] = all_chunks
+                st.session_state["document_names"] = processed_names
                 st.session_state["summary"] = None
                 st.session_state["answer"] = None
+                st.session_state["sources"] = []
 
-            st.success(
-                f"Successfully processed {document_name}"
-            )
+                st.success(
+                    f"Workspace ready: {len(processed_names)} PDF(s), "
+                    f"{len(all_chunks)} chunks."
+                )
 
         except Exception as error:
-            st.error(f"Could not process PDF: {error}")
+
+            progress.empty()
+            status.empty()
+
+            st.error(
+                f"Could not process PDFs: {error}"
+            )
 
 
 # --------------------------------------------------
@@ -143,8 +231,11 @@ if uploaded_file is not None:
 
 if "chunks" in st.session_state:
 
+    # chunks = st.session_state["chunks"]
+    # document_name = st.session_state["document_name"]
+
     chunks = st.session_state["chunks"]
-    document_name = st.session_state["document_name"]
+    document_names = st.session_state["document_names"]
 
     st.divider()
 
@@ -153,10 +244,15 @@ if "chunks" in st.session_state:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.metric("Document", document_name)
+        st.metric("PDFs loaded", len(document_names))
 
     with col2:
         st.metric("Text chunks", len(chunks))
+
+    st.write("Documents in this workspace:")
+
+    for document_name in document_names:
+        st.write(f"- {document_name}")
 
     question_tab, summary_tab = st.tabs(
         ["💬 Ask a question", "📝 Summarize"]

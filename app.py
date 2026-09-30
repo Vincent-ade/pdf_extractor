@@ -209,6 +209,7 @@ if st.button("Process selected PDFs", type="primary"):
                 st.session_state["summary"] = None
                 st.session_state["answer"] = None
                 st.session_state["sources"] = []
+                st.session_state["chat_history"] = []
 
                 st.success(
                     f"Workspace ready: {len(processed_names)} PDF(s), "
@@ -237,6 +238,9 @@ if "chunks" in st.session_state:
     chunks = st.session_state["chunks"]
     document_names = st.session_state["document_names"]
 
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
+
     st.divider()
 
     st.subheader("Document workspace")
@@ -262,99 +266,92 @@ if "chunks" in st.session_state:
     # QUESTION ANSWERING
     # --------------------------------------------------
 
+    
     with question_tab:
 
-        st.subheader("Ask your PDF")
+        st.subheader("Ask your PDFs")
 
-        question = st.text_input(
-            "Enter your question",
-            key="pdf_question",
-            placeholder="What are the main points?",
+        # Display previous questions and answers.
+        if st.session_state["chat_history"]:
+
+            for item in st.session_state["chat_history"]:
+
+                with st.chat_message("user"):
+                    st.write(item["question"])
+
+                with st.chat_message("assistant"):
+                    st.markdown(item["answer"])
+
+                    if item["sources"]:
+                        with st.expander("Sources"):
+                            for source in item["sources"]:
+                                st.write(
+                                    f"- {source['document']} — "
+                                    f"Page {source['page']}"
+                                )
+
+            if st.button("Clear Q&A history"):
+                st.session_state["chat_history"] = []
+                st.rerun()
+
+        question = st.chat_input(
+            "Ask a question about your PDFs..."
         )
 
-        if st.button("Get answer", type="primary"):
+        if question:
 
-            if not question.strip():
+            try:
 
-                st.warning("Please enter a question.")
+                with st.spinner("Finding an answer..."):
 
-            else:
+                    results = search(
+                        question,
+                        chunks,
+                        top_k=3,
+                    )
 
-                try:
+                    if not results:
 
-                    with st.spinner("Finding an answer..."):
-
-                        results = search(
-                            question,
-                            chunks,
-                            top_k=3,
+                        answer = (
+                            "I could not find the answer "
+                            "in the document."
                         )
 
-                        if not results:
+                        sources = []
 
-                            st.session_state["answer"] = (
-                                "I could not find the answer "
-                                "in the document."
+                    else:
+
+                        if is_document_wide_question(question):
+
+                            context, sources = (
+                                build_document_context(chunks)
                             )
-                            st.session_state["sources"] = []
 
                         else:
 
-                            if is_document_wide_question(
-                                question
-                            ):
-
-                                context, sources = (
-                                    build_document_context(chunks)
-                                )
-
-                            else:
-
-                                context, sources = build_context(
-                                    results
-                                )
-
-                            answer = generate_answer(
-                                question,
-                                context,
+                            context, sources = build_context(
+                                results
                             )
 
-                            st.session_state["answer"] = answer
-                            st.session_state["sources"] = sources
-
-                except Exception as error:
-
-                    st.error(f"Could not answer question: {error}")
-
-        if st.session_state.get("answer"):
-
-            st.markdown("### Answer")
-
-            st.write(st.session_state["answer"])
-
-            sources = st.session_state.get("sources", [])
-
-            if sources:
-
-                st.markdown("### Sources")
-
-                unique_sources = set()
-
-                for source in sources:
-
-                    key = (
-                        source["document"],
-                        source["page"],
-                    )
-
-                    if key not in unique_sources:
-
-                        st.write(
-                            f"- {source['document']} — "
-                            f"Page {source['page']}"
+                        answer = generate_answer(
+                            question,
+                            context,
                         )
 
-                        unique_sources.add(key)
+                # Store this exchange in the current session.
+                st.session_state["chat_history"].append({
+                    "question": question,
+                    "answer": answer,
+                    "sources": sources,
+                })
+
+                st.rerun()
+
+            except Exception as error:
+
+                st.error(
+                    f"Could not answer question: {error}"
+                )
 
     # --------------------------------------------------
     # DOCUMENT SUMMARIZATION

@@ -213,3 +213,52 @@ FINAL DOCUMENT SUMMARY:
     )
 
     return response["message"]["content"]
+
+
+
+def rewrite_followup_question(question, chat_history):
+    """Rewrite follow-up questions using recent conversation history."""
+
+    if not chat_history:
+        return question
+
+    conversation = ""
+
+    for item in chat_history[-4:]:
+        conversation += (
+            f"\nUser: {item['question']}\n"
+            f"Assistant: {item['answer']}\n"
+        )
+
+    prompt = f"""
+Rewrite the new question as a standalone question using
+the conversation history.
+
+Rules:
+- Understand references such as "it", "that", and "the first one".
+- Preserve the user's intended meaning.
+- Do not answer the question.
+- Return only the rewritten question.
+
+CONVERSATION:
+{conversation}
+
+NEW QUESTION:
+{question}
+
+REWRITTEN QUESTION:
+"""
+
+    response = ollama.chat(
+        model="llama3.2",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    rewritten = response["message"]["content"].strip()
+
+    return rewritten or question

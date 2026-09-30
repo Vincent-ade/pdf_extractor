@@ -361,26 +361,14 @@ if "chunks" in st.session_state:
             "Ask a question about your PDFs..."
         )
 
-        
         if question:
-
-            # Save recent history before adding the new exchange.
-            previous_history = st.session_state[
-                "chat_history"
-            ][-4:]
 
             try:
 
                 with st.spinner("Finding an answer..."):
 
-                    # Understand follow-up references.
-                    search_question = rewrite_followup_question(
-                        question,
-                        previous_history,
-                    )
-
                     results = search(
-                        search_question,
+                        question,
                         chunks,
                         top_k=3,
                     )
@@ -396,9 +384,7 @@ if "chunks" in st.session_state:
 
                     else:
 
-                        if is_document_wide_question(
-                            search_question
-                        ):
+                        if is_document_wide_question(question):
 
                             context, sources = (
                                 build_document_context(chunks)
@@ -410,35 +396,19 @@ if "chunks" in st.session_state:
                                 results
                             )
 
-                        # Include recent exchanges as context.
-                        conversation_context = ""
-
-                        for item in previous_history:
-                            conversation_context += (
-                                f"\nPrevious question: "
-                                f"{item['question']}\n"
-                                f"Previous answer: "
-                                f"{item['answer']}\n"
-                            )
-
-                        if conversation_context:
-                            context += (
-                                "\n\nRECENT CONVERSATION:\n"
-                                + conversation_context
-                            )
-
                         answer = generate_answer(
                             question,
                             context,
                         )
 
+                # Add the exchange to the current history.
                 st.session_state["chat_history"].append({
                     "question": question,
                     "answer": answer,
                     "sources": sources,
                 })
 
-                # Save history to disk.
+                # Persist all workspaces' histories.
                 histories = load_all_histories()
 
                 histories[workspace_key] = (

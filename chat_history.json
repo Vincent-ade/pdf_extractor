@@ -1,0 +1,22 @@
+{
+  "bee0ff47702cc2c6065cdf423e55e477708ea8b699f8364c38616782b2105054": [
+    {
+      "question": "what is data center?",
+      "answer": "A data center is a large building or complex that houses servers, storage systems, and network devices, providing a central location for computer systems and data processing.",
+      "sources": [
+        {
+          "document": "System Design Interview by Alex Xu.pdf",
+          "page": 24
+        },
+        {
+          "document": "System Design Interview by Alex Xu.pdf",
+          "page": 23
+        },
+        {
+          "document": "System Design Interview by Alex Xu.pdf",
+          "page": 176
+        }
+      ]
+    }
+  ]
+}

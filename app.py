@@ -381,11 +381,33 @@ if "chunks" in st.session_state:
                 st.markdown(item["answer"])
 
                 if item.get("sources"):
+
                     with st.expander("Sources"):
+
+                        displayed_sources = set()
+
                         for source in item["sources"]:
-                            st.write(
-                                f"- {source['document']} — "
-                                f"Page {source['page']}"
+
+                            source_key = (
+                                source["document"],
+                                source["page"]
+                            )
+
+                            if source_key in displayed_sources:
+                                continue
+
+                            displayed_sources.add(source_key)
+
+                            document = source["document"]
+                            page = source["page"]
+
+                            st.markdown(
+                                f"**{document} — Page {page}**"
+                            )
+
+                            show_pdf_page(
+                                document,
+                                page
                             )
 
         # Clear history for this workspace only.

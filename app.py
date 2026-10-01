@@ -1,79 +1,40 @@
 import os
 import json
 import hashlib
-import pymupdf
 import streamlit as st
+import pymupdf
 
-from extract import ( extract_pages, create_chunks, get_cache_path, load_embeddings, save_embeddings, is_document_wide_question,
+from extract import (
+    extract_pages,
+    create_chunks,
+    is_document_wide_question,
 )
 
 from embedding import create_embeddings
+
 from similarity_search import search
 
-from ollama_client import ( build_context, build_document_context, create_chunk_batches, generate_answer, summarize_batch, combine_summaries, rewrite_followup_question,
+from ollama_client import (
+    build_context,
+    build_document_context,
+    create_chunk_batches,
+    generate_answer,
+    summarize_batch,
+    combine_summaries,
+    rewrite_followup_question,
 )
 
 
+# ============================================================
+# CONFIG
+# ============================================================
+
 PDF_FOLDER = "pdfs"
 CACHE_FOLDER = "cache"
-
 HISTORY_FILE = "chat_history.json"
-
-
-def get_workspace_key(document_names):
-    """Create a key for the selected PDFs."""
-
-    documents = []
-
-    for name in sorted(document_names):
-        path = os.path.join(PDF_FOLDER, name)
-
-        modified = (
-            os.path.getmtime(path)
-            if os.path.exists(path)
-            else None
-        )
-
-        documents.append({
-            "name": name,
-            "modified": modified,
-        })
-
-    content = json.dumps(documents, sort_keys=True)
-
-    return hashlib.sha256(
-        content.encode("utf-8")
-    ).hexdigest()
-
-
-def load_all_histories():
-    """Load saved conversations from disk."""
-
-    if not os.path.exists(HISTORY_FILE):
-        return {}
-
-    try:
-        with open(HISTORY_FILE, "r", encoding="utf-8") as file:
-            return json.load(file)
-
-    except (json.JSONDecodeError, OSError):
-        return {}
-
-
-def save_all_histories(histories):
-    """Save conversations to disk."""
-
-    with open(HISTORY_FILE, "w", encoding="utf-8") as file:
-        json.dump(
-            histories,
-            file,
-            indent=2,
-            ensure_ascii=False,
-        )
 
 os.makedirs(PDF_FOLDER, exist_ok=True)
 os.makedirs(CACHE_FOLDER, exist_ok=True)
-
 
 st.set_page_config(
     page_title="Local PDF Assistant",
@@ -81,15 +42,141 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("📄 Local PDF Assistant")
-st.write(
-    "Upload a PDF to ask questions about its contents "
-    "or generate a document summary."
-)
 
-def show_pdf_page(document_name, page_number):
+# ============================================================
+# HELPER FUNCTIONS
+# ============================================================
+
+def get_workspace_key(document_names):
     """
-    Display a specific PDF page as an image.
+    Creates a unique key for the currently selected PDFs.
+    """
+
+    joined = "|".join(sorted(document_names))
+
+    return hashlib.md5(
+        joined.encode("utf-8")
+    ).hexdigest()
+
+
+def load_chat_histories():
+    """
+    Loads saved chat history from chat_history.json.
+    """
+
+    if not os.path.exists(HISTORY_FILE):
+        return {}
+
+    try:
+        with open(
+            HISTORY_FILE,
+            "r",
+            encoding="utf-8"
+        ) as file:
+            return json.load(file)
+
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def save_chat_histories(histories):
+    """
+    Saves chat history.
+    """
+
+    with open(
+        HISTORY_FILE,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            histories,
+            file,
+            indent=4,
+            ensure_ascii=False
+        )
+
+
+def get_cache_path(pdf_path):
+    """
+    Creates a cache filename based on the PDF name and
+    modification time.
+    """
+
+    filename = os.path.basename(pdf_path)
+
+    modified_time = os.path.getmtime(pdf_path)
+
+    cache_key = hashlib.md5(
+        f"{filename}_{modified_time}".encode("utf-8")
+    ).hexdigest()
+
+    return os.path.join(
+        CACHE_FOLDER,
+        f"{cache_key}.pkl"
+    )
+
+
+def load_embeddings_cache(cache_path):
+    """
+    Loads embeddings from cache.
+    """
+
+    import pickle
+
+    if not os.path.exists(cache_path):
+        return None
+
+    try:
+        with open(cache_path, "rb") as file:
+            return pickle.load(file)
+
+    except Exception:
+        return None
+
+
+def save_embeddings_cache(cache_path, chunks):
+    """
+    Saves chunks and embeddings to cache.
+    """
+
+    import pickle
+
+    with open(cache_path, "wb") as file:
+        pickle.dump(chunks, file)
+
+
+def process_pdf(pdf_path):
+    """
+    Extracts, chunks and embeds a PDF.
+    Uses cached embeddings when available.
+    """
+
+    cache_path = get_cache_path(pdf_path)
+
+    cached_chunks = load_embeddings_cache(cache_path)
+
+    if cached_chunks is not None:
+        return cached_chunks
+
+    pages = extract_pages(pdf_path)
+
+    chunks = create_chunks(pages)
+
+    chunks = create_embeddings(chunks)
+
+    save_embeddings_cache(
+        cache_path,
+        chunks
+    )
+
+    return chunks
+
+
+def get_pdf_page_count(document_name):
+    """
+    Returns the number of pages in a PDF.
     """
 
     pdf_path = os.path.join(
@@ -98,507 +185,730 @@ def show_pdf_page(document_name, page_number):
     )
 
     if not os.path.exists(pdf_path):
-        st.warning(
-            f"Could not find {document_name}."
-        )
-        return
+        return 0
 
     try:
+        with pymupdf.open(pdf_path) as doc:
+            return len(doc)
 
+    except Exception:
+        return 0
+
+
+def render_pdf_page(document_name, page_number):
+    """
+    Renders one PDF page as an image.
+    """
+
+    pdf_path = os.path.join(
+        PDF_FOLDER,
+        document_name
+    )
+
+    if not os.path.exists(pdf_path):
+        return None
+
+    try:
         with pymupdf.open(pdf_path) as doc:
 
-            if page_number < 1 or page_number > len(doc):
-                st.warning(
-                    f"Page {page_number} does not exist."
-                )
-                return
+            if page_number < 1:
+                page_number = 1
+
+            if page_number > len(doc):
+                page_number = len(doc)
 
             page = doc[page_number - 1]
 
-            pix = page.get_pixmap(
-                matrix=pymupdf.Matrix(1.5, 1.5)
+            matrix = pymupdf.Matrix(
+                1.5,
+                1.5
             )
 
-            image_bytes = pix.tobytes("png")
-
-            st.image(
-                image_bytes,
-                caption=f"{document_name} — Page {page_number}",
-                width="stretch"
+            pixmap = page.get_pixmap(
+                matrix=matrix,
+                alpha=False
             )
 
-    except Exception as error:
+            return pixmap.tobytes("png")
 
-        st.error(
-            f"Could not display page: {error}"
-        )
+    except Exception:
+        return None
 
-#
-# --------------------------------------------------
-# PDF LIBRARY AND PROCESSING
-# --------------------------------------------------
 
-saved_pdf_names = sorted(
-    filename
-    for filename in os.listdir(PDF_FOLDER)
-    if filename.lower().endswith(".pdf")
+def set_preview_page(document_name, page_number):
+    """
+    Changes the PDF preview document and page.
+    """
+
+    st.session_state.pdf_preview_document = document_name
+    st.session_state.pdf_preview_page = page_number
+
+
+# ============================================================
+# SESSION STATE
+# ============================================================
+
+if "chunks" not in st.session_state:
+    st.session_state.chunks = []
+
+if "document_names" not in st.session_state:
+    st.session_state.document_names = []
+
+if "summary" not in st.session_state:
+    st.session_state.summary = ""
+
+if "answer" not in st.session_state:
+    st.session_state.answer = ""
+
+if "sources" not in st.session_state:
+    st.session_state.sources = []
+
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
+if "chat_workspace_key" not in st.session_state:
+    st.session_state.chat_workspace_key = ""
+
+if "pdf_preview_document" not in st.session_state:
+    st.session_state.pdf_preview_document = None
+
+if "pdf_preview_page" not in st.session_state:
+    st.session_state.pdf_preview_page = 1
+
+
+# ============================================================
+# LOAD SAVED CHAT HISTORIES
+# ============================================================
+
+chat_histories = load_chat_histories()
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+st.title("📄 Local PDF Assistant")
+
+st.caption(
+    "Ask questions, summarize documents, and inspect source pages."
 )
 
-st.subheader("Your PDF library")
 
-selected_pdfs = st.multiselect(
-    "Select PDFs already in your library",
-    options=saved_pdf_names,
-    help="You can select multiple PDFs to use together.",
+# ============================================================
+# PDF LIBRARY
+# ============================================================
+
+st.sidebar.header("📚 PDF Library")
+
+existing_pdfs = sorted(
+    [
+        filename
+        for filename in os.listdir(PDF_FOLDER)
+        if filename.lower().endswith(".pdf")
+    ]
 )
 
-uploaded_files = st.file_uploader(
-    "Or upload new PDFs",
+
+selected_pdfs = st.sidebar.multiselect(
+    "Select PDFs",
+    existing_pdfs,
+)
+
+
+uploaded_files = st.sidebar.file_uploader(
+    "Add new PDFs",
     type=["pdf"],
     accept_multiple_files=True,
-    key="pdf_library_upload",
 )
 
-if st.button("Process selected PDFs", type="primary"):
 
-    # Map document names to their local file paths.
-    files_to_process = {}
+if uploaded_files:
 
-    for filename in selected_pdfs:
-        files_to_process[filename] = os.path.join(
+    for uploaded_file in uploaded_files:
+
+        save_path = os.path.join(
             PDF_FOLDER,
-            filename,
-        )
-
-    # Save newly uploaded files without rewriting
-    # files whose contents have not changed.
-    for uploaded_file in uploaded_files or []:
-
-        document_name = os.path.basename(
             uploaded_file.name
         )
 
-        pdf_path = os.path.join(
-            PDF_FOLDER,
-            document_name,
-        )
+        with open(
+            save_path,
+            "wb"
+        ) as file:
 
-        new_bytes = uploaded_file.getvalue()
+            file.write(
+                uploaded_file.getbuffer()
+            )
 
-        existing_bytes = None
+    st.sidebar.success(
+        "PDF uploaded successfully."
+    )
 
-        if os.path.exists(pdf_path):
-            with open(pdf_path, "rb") as file:
-                existing_bytes = file.read()
+    st.rerun()
 
-        if existing_bytes != new_bytes:
-            with open(pdf_path, "wb") as file:
-                file.write(new_bytes)
 
-        files_to_process[document_name] = pdf_path
+# ============================================================
+# PROCESS DOCUMENTS
+# ============================================================
 
-    if not files_to_process:
+if selected_pdfs:
 
-        st.warning(
-            "Select at least one saved PDF or upload a new PDF."
-        )
-
-    else:
+    if st.sidebar.button(
+        "Process selected PDFs",
+        type="primary"
+    ):
 
         all_chunks = []
-        processed_names = []
+        document_names = []
 
-        progress = st.progress(0)
-        status = st.empty()
+        progress = st.sidebar.progress(0)
 
-        try:
+        total = len(selected_pdfs)
 
-            with st.spinner("Processing your PDFs..."):
+        for index, document_name in enumerate(
+            selected_pdfs
+        ):
 
-                total_files = len(files_to_process)
+            pdf_path = os.path.join(
+                PDF_FOLDER,
+                document_name
+            )
 
-                for index, (document_name, pdf_path) in enumerate(
-                    files_to_process.items(),
-                    start=1,
+            try:
+
+                chunks = process_pdf(
+                    pdf_path
+                )
+
+                all_chunks.extend(chunks)
+
+                document_names.append(
+                    document_name
+                )
+
+            except Exception as error:
+
+                st.sidebar.error(
+                    f"Could not process {document_name}: {error}"
+                )
+
+            progress.progress(
+                (index + 1) / total
+            )
+
+        st.session_state.chunks = all_chunks
+
+        st.session_state.document_names = document_names
+
+        # Reset preview
+        if document_names:
+
+            st.session_state.pdf_preview_document = (
+                document_names[0]
+            )
+
+            st.session_state.pdf_preview_page = 1
+
+        # Load the correct saved chat history
+        workspace_key = get_workspace_key(
+            document_names
+        )
+
+        st.session_state.chat_workspace_key = (
+            workspace_key
+        )
+
+        st.session_state.chat_history = (
+            chat_histories.get(
+                workspace_key,
+                []
+            )
+        )
+
+        st.session_state.summary = ""
+
+        st.sidebar.success(
+            f"{len(document_names)} PDF(s) ready."
+        )
+
+
+# ============================================================
+# CHECK WHETHER DOCUMENTS ARE LOADED
+# ============================================================
+
+if not st.session_state.chunks:
+
+    st.info(
+        "Select one or more PDFs from the sidebar, "
+        "then click **Process selected PDFs**."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# PDF PREVIEW
+# ============================================================
+
+st.divider()
+
+st.subheader("📖 PDF Preview")
+
+preview_documents = st.session_state.document_names
+
+
+# Make sure selected preview document still exists
+if (
+    st.session_state.pdf_preview_document
+    not in preview_documents
+):
+
+    st.session_state.pdf_preview_document = (
+        preview_documents[0]
+    )
+
+    st.session_state.pdf_preview_page = 1
+
+
+preview_document = st.selectbox(
+    "Document",
+    preview_documents,
+    index=preview_documents.index(
+        st.session_state.pdf_preview_document
+    ),
+)
+
+
+if preview_document != st.session_state.pdf_preview_document:
+
+    st.session_state.pdf_preview_document = (
+        preview_document
+    )
+
+    st.session_state.pdf_preview_page = 1
+
+
+page_count = get_pdf_page_count(
+    st.session_state.pdf_preview_document
+)
+
+current_page = st.session_state.pdf_preview_page
+
+
+# Keep page within valid range
+if page_count > 0:
+
+    current_page = max(
+        1,
+        min(
+            current_page,
+            page_count
+        )
+    )
+
+    st.session_state.pdf_preview_page = current_page
+
+
+# Navigation
+preview_col1, preview_col2, preview_col3 = st.columns(
+    [1, 2, 1]
+)
+
+
+with preview_col1:
+
+    if st.button(
+        "← Previous",
+        disabled=current_page <= 1,
+        use_container_width=True
+    ):
+
+        st.session_state.pdf_preview_page -= 1
+
+        st.rerun()
+
+
+with preview_col2:
+
+    st.markdown(
+        f"<div style='text-align:center; padding-top:7px;'>"
+        f"<b>Page {current_page} of {page_count}</b>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+
+
+with preview_col3:
+
+    if st.button(
+        "Next →",
+        disabled=current_page >= page_count,
+        use_container_width=True
+    ):
+
+        st.session_state.pdf_preview_page += 1
+
+        st.rerun()
+
+
+# Render current page
+page_image = render_pdf_page(
+    st.session_state.pdf_preview_document,
+    current_page
+)
+
+
+if page_image:
+
+    st.image(
+        page_image,
+        use_container_width=True
+    )
+
+else:
+
+    st.error(
+        "Could not display this PDF page."
+    )
+
+
+# ============================================================
+# MAIN TABS
+# ============================================================
+
+st.divider()
+
+qa_tab, summary_tab = st.tabs(
+    [
+        "💬 Q&A",
+        "📝 Summarize"
+    ]
+)
+
+
+# ============================================================
+# Q&A
+# ============================================================
+
+with qa_tab:
+
+    st.subheader("Ask your documents")
+
+    # Display previous conversation
+    for message in st.session_state.chat_history:
+
+        with st.chat_message(
+            message["role"]
+        ):
+
+            st.markdown(
+                message["content"]
+            )
+
+            # Display sources for assistant messages
+            if (
+                message["role"] == "assistant"
+                and message.get("sources")
+            ):
+
+                st.markdown(
+                    "**Sources**"
+                )
+
+                for source_index, source in enumerate(
+                    message["sources"]
                 ):
 
-                    status.write(
-                        f"Processing {document_name} "
-                        f"({index}/{total_files})..."
+                    document = source["document"]
+                    page = source["page"]
+
+                    st.write(
+                        f"📄 {document} — Page {page}"
                     )
 
-                    cache_path = get_cache_path(
-                        document_name
-                    )
+                    if st.button(
+                        f"View page {page}",
+                        key=(
+                            f"history_source_"
+                            f"{len(st.session_state.chat_history)}_"
+                            f"{source_index}"
+                        )
+                    ):
 
-                    # Reuse cached embeddings when valid.
-                    chunks = load_embeddings(
-                        pdf_path,
-                        cache_path,
-                    )
-
-                    if chunks is None:
-
-                        pages = extract_pages(pdf_path)
-
-                        if not pages:
-                            st.warning(
-                                f"No readable text found in "
-                                f"{document_name}. Skipping it."
-                            )
-                            progress.progress(
-                                index / total_files
-                            )
-                            continue
-
-                        chunks = create_chunks(
-                            pages,
-                            document_name,
+                        set_preview_page(
+                            document,
+                            page
                         )
 
-                        if not chunks:
-                            st.warning(
-                                f"No text chunks created for "
-                                f"{document_name}. Skipping it."
-                            )
-                            progress.progress(
-                                index / total_files
-                            )
-                            continue
+                        st.rerun()
 
-                        chunks = create_embeddings(chunks)
 
-                        save_embeddings(
-                            chunks,
-                            pdf_path,
-                            cache_path,
-                        )
+    question = st.chat_input(
+        "Ask a question about your PDF..."
+    )
 
-                    all_chunks.extend(chunks)
-                    processed_names.append(document_name)
 
-                    progress.progress(
-                        index / total_files
+    if question:
+
+        # Add user question
+        st.session_state.chat_history.append(
+            {
+                "role": "user",
+                "content": question
+            }
+        )
+
+
+        with st.chat_message("user"):
+
+            st.markdown(question)
+
+
+        # ----------------------------------------------------
+        # Rewrite follow-up questions
+        # ----------------------------------------------------
+
+        search_question = question
+
+        previous_messages = (
+            st.session_state.chat_history[:-1]
+        )
+
+        if previous_messages:
+
+            try:
+
+                search_question = (
+                    rewrite_followup_question(
+                        question,
+                        previous_messages
                     )
-
-            progress.empty()
-            status.empty()
-
-            if not all_chunks:
-
-                st.error(
-                    "No readable text was found in the selected PDFs."
                 )
 
-            else:
+            except Exception:
 
-                st.session_state["chunks"] = all_chunks
-                st.session_state["document_names"] = processed_names
-                st.session_state["summary"] = None
-                st.session_state["answer"] = None
-                st.session_state["sources"] = []
-                # st.session_state["chat_history"] = []
+                search_question = question
 
-                st.success(
-                    f"Workspace ready: {len(processed_names)} PDF(s), "
-                    f"{len(all_chunks)} chunks."
+
+        # ----------------------------------------------------
+        # Search
+        # ----------------------------------------------------
+
+        if is_document_wide_question(
+            search_question
+        ):
+
+            context, sources = (
+                build_document_context(
+                    st.session_state.chunks
                 )
+            )
 
-        except Exception as error:
+        else:
 
-            progress.empty()
-            status.empty()
+            results = search(
+                search_question,
+                st.session_state.chunks,
+                top_k=3
+            )
 
-            st.error(
-                f"Could not process PDFs: {error}"
+            context, sources = build_context(
+                results
             )
 
 
-# --------------------------------------------------
-# DOCUMENT WORKSPACE
-# --------------------------------------------------
+        # ----------------------------------------------------
+        # Generate answer
+        # ----------------------------------------------------
 
-if "chunks" in st.session_state:
+        with st.chat_message("assistant"):
 
-    # chunks = st.session_state["chunks"]
-    # document_name = st.session_state["document_name"]
+            with st.spinner(
+                "Thinking..."
+            ):
 
-    chunks = st.session_state["chunks"]
-    document_names = st.session_state["document_names"]
+                try:
 
-    workspace_key = get_workspace_key(document_names)
+                    answer = generate_answer(
+                        question,
+                        context
+                    )
 
-    if st.session_state.get("chat_workspace_key") != workspace_key:
+                except Exception as error:
 
-        histories = load_all_histories()
+                    answer = (
+                        f"Error generating answer: {error}"
+                    )
 
-        st.session_state["chat_history"] = histories.get(
-            workspace_key,
-            [],
-        )
 
-        st.session_state["chat_workspace_key"] = workspace_key
+            st.markdown(answer)
 
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
 
-    st.divider()
+            # Sources
+            if sources:
 
-    st.subheader("Document workspace")
+                st.markdown(
+                    "**Sources**"
+                )
 
-    col1, col2 = st.columns(2)
+                for source_index, source in enumerate(
+                    sources
+                ):
 
-    with col1:
-        st.metric("PDFs loaded", len(document_names))
+                    document = source["document"]
+                    page = source["page"]
 
-    with col2:
-        st.metric("Text chunks", len(chunks))
+                    source_col1, source_col2 = st.columns(
+                        [4, 1]
+                    )
 
-    st.write("Documents in this workspace:")
+                    with source_col1:
 
-    for document_name in document_names:
-        st.write(f"- {document_name}")
+                        st.write(
+                            f"📄 {document} — Page {page}"
+                        )
 
-    question_tab, summary_tab = st.tabs(
-        ["💬 Ask a question", "📝 Summarize"]
-    )
+                    with source_col2:
 
-    # --------------------------------------------------
-    # QUESTION ANSWERING
-    # --------------------------------------------------
-    
-    with question_tab:
-
-        st.subheader("Ask your PDFs")
-
-        # Display saved conversation history.
-        for item in st.session_state["chat_history"]:
-
-            with st.chat_message("user"):
-                st.write(item["question"])
-
-            with st.chat_message("assistant"):
-                st.markdown(item["answer"])
-
-                if item.get("sources"):
-
-                    with st.expander("Sources"):
-
-                        displayed_sources = set()
-
-                        for source in item["sources"]:
-
-                            source_key = (
-                                source["document"],
-                                source["page"]
+                        if st.button(
+                            "View page",
+                            key=(
+                                f"current_source_"
+                                f"{source_index}_"
+                                f"{question}"
                             )
+                        ):
 
-                            if source_key in displayed_sources:
-                                continue
-
-                            displayed_sources.add(source_key)
-
-                            document = source["document"]
-                            page = source["page"]
-
-                            st.markdown(
-                                f"**{document} — Page {page}**"
-                            )
-
-                            show_pdf_page(
+                            set_preview_page(
                                 document,
                                 page
                             )
 
-        # Clear history for this workspace only.
-        if st.session_state["chat_history"]:
+                            st.rerun()
 
-            if st.button("Clear Q&A history"):
 
-                histories = load_all_histories()
-                histories.pop(workspace_key, None)
+        # ----------------------------------------------------
+        # Save conversation
+        # ----------------------------------------------------
 
-                save_all_histories(histories)
-
-                st.session_state["chat_history"] = []
-
-                st.rerun()
-
-        question = st.chat_input(
-            "Ask a question about your PDFs..."
+        st.session_state.chat_history.append(
+            {
+                "role": "assistant",
+                "content": answer,
+                "sources": sources
+            }
         )
 
-        
-        if question:
 
-            # Save recent history before adding the new exchange.
-            previous_history = st.session_state[
-                "chat_history"
-            ][-4:]
+        # Save persistent history
+        workspace_key = (
+            st.session_state.chat_workspace_key
+        )
+
+        if workspace_key:
+
+            chat_histories[
+                workspace_key
+            ] = st.session_state.chat_history
+
+            save_chat_histories(
+                chat_histories
+            )
+
+        st.rerun()
+
+
+# ============================================================
+# SUMMARIZE
+# ============================================================
+
+with summary_tab:
+
+    st.subheader("Document Summary")
+
+    st.write(
+        "Generate a summary of the selected documents."
+    )
+
+
+    if st.button(
+        "Generate Summary",
+        type="primary"
+    ):
+
+        all_summaries = []
+
+        batches = create_chunk_batches(
+            st.session_state.chunks,
+            batch_size=5
+        )
+
+
+        progress = st.progress(0)
+
+        total_batches = len(batches)
+
+
+        for index, batch in enumerate(
+            batches
+        ):
 
             try:
 
-                with st.spinner("Finding an answer..."):
-
-                    # Understand follow-up references.
-                    search_question = rewrite_followup_question(
-                        question,
-                        previous_history,
-                    )
-
-                    results = search(
-                        search_question,
-                        chunks,
-                        top_k=3,
-                    )
-
-                    if not results:
-
-                        answer = (
-                            "I could not find the answer "
-                            "in the document."
-                        )
-
-                        sources = []
-
-                    else:
-
-                        if is_document_wide_question(
-                            search_question
-                        ):
-
-                            context, sources = (
-                                build_document_context(chunks)
-                            )
-
-                        else:
-
-                            context, sources = build_context(
-                                results
-                            )
-
-                        # Include recent exchanges as context.
-                        conversation_context = ""
-
-                        for item in previous_history:
-                            conversation_context += (
-                                f"\nPrevious question: "
-                                f"{item['question']}\n"
-                                f"Previous answer: "
-                                f"{item['answer']}\n"
-                            )
-
-                        if conversation_context:
-                            context += (
-                                "\n\nRECENT CONVERSATION:\n"
-                                + conversation_context
-                            )
-
-                        answer = generate_answer(
-                            question,
-                            context,
-                        )
-
-                st.session_state["chat_history"].append({
-                    "question": question,
-                    "answer": answer,
-                    "sources": sources,
-                })
-
-                # Save history to disk.
-                histories = load_all_histories()
-
-                histories[workspace_key] = (
-                    st.session_state["chat_history"]
+                batch_summary = summarize_batch(
+                    batch
                 )
 
-                save_all_histories(histories)
-
-                st.rerun()
+                all_summaries.append(
+                    batch_summary
+                )
 
             except Exception as error:
 
                 st.error(
-                    f"Could not answer question: {error}"
+                    f"Error summarizing batch "
+                    f"{index + 1}: {error}"
                 )
 
-    # --------------------------------------------------
-    # DOCUMENT SUMMARIZATION
-    # --------------------------------------------------
-
-    with summary_tab:
-
-        st.subheader("Summarize your PDF")
-
-        st.write(
-            "Generate one combined summary from all "
-            "the document's batches."
-        )
-
-        if st.button("Generate summary", type="primary"):
-
-            try:
-
-                batches = create_chunk_batches(
-                    chunks,
-                    batch_size=5,
-                )
-
-                summaries = []
-
-                progress = st.progress(0)
-                status = st.empty()
-
-                with st.spinner("Summarizing document..."):
-
-                    for index, batch in enumerate(
-                        batches,
-                        start=1,
-                    ):
-
-                        status.write(
-                            f"Processing batch {index} "
-                            f"of {len(batches)}..."
-                        )
-
-                        batch_summary = summarize_batch(batch)
-                        summaries.append(batch_summary)
-
-                        progress.progress(
-                            index / len(batches)
-                        )
-
-                    status.write("Combining summaries...")
-
-                    final_summary = combine_summaries(
-                        summaries
-                    )
-
-                    st.session_state["summary"] = final_summary
-
-                    status.empty()
-                    progress.empty()
-
-            except Exception as error:
-
-                st.error(f"Could not summarize PDF: {error}")
-
-        if st.session_state.get("summary"):
-
-            st.markdown("### Document Summary")
-
-            st.markdown(st.session_state["summary"])
-
-            st.download_button(
-                "Download summary as TXT",
-                data=st.session_state["summary"],
-                file_name="document_summary.txt",
-                mime="text/plain",
+            progress.progress(
+                (index + 1) / total_batches
             )
 
-else:
 
-    st.info(
-        "Upload a PDF and click 'Process PDF' "
-        "to get started."
-    )
+        if all_summaries:
+
+            with st.spinner(
+                "Combining summaries..."
+            ):
+
+                try:
+
+                    final_summary = combine_summaries(
+                        all_summaries
+                    )
+
+                    st.session_state.summary = (
+                        final_summary
+                    )
+
+                except Exception as error:
+
+                    st.error(
+                        f"Error combining summaries: {error}"
+                    )
+
+
+    # Display saved summary
+    if st.session_state.summary:
+
+        st.markdown(
+            st.session_state.summary
+        )
+
+
+        st.download_button(
+            "⬇️ Download Summary",
+            data=st.session_state.summary,
+            file_name="pdf_summary.txt",
+            mime="text/plain"
+        )

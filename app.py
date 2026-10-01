@@ -1,7 +1,8 @@
 import os
-import streamlit as st
 import json
 import hashlib
+import pymupdf
+import streamlit as st
 
 from extract import ( extract_pages, create_chunks, get_cache_path, load_embeddings, save_embeddings, is_document_wide_question,
 )
@@ -86,7 +87,51 @@ st.write(
     "or generate a document summary."
 )
 
+def show_pdf_page(document_name, page_number):
+    """
+    Display a specific PDF page as an image.
+    """
 
+    pdf_path = os.path.join(
+        PDF_FOLDER,
+        document_name
+    )
+
+    if not os.path.exists(pdf_path):
+        st.warning(
+            f"Could not find {document_name}."
+        )
+        return
+
+    try:
+
+        with pymupdf.open(pdf_path) as doc:
+
+            if page_number < 1 or page_number > len(doc):
+                st.warning(
+                    f"Page {page_number} does not exist."
+                )
+                return
+
+            page = doc[page_number - 1]
+
+            pix = page.get_pixmap(
+                matrix=pymupdf.Matrix(1.5, 1.5)
+            )
+
+            image_bytes = pix.tobytes("png")
+
+            st.image(
+                image_bytes,
+                caption=f"{document_name} — Page {page_number}",
+                width="stretch"
+            )
+
+    except Exception as error:
+
+        st.error(
+            f"Could not display page: {error}"
+        )
 
 #
 # --------------------------------------------------

@@ -162,7 +162,12 @@ def process_pdf(pdf_path):
 
     pages = extract_pages(pdf_path)
 
-    chunks = create_chunks(pages)
+    document_name = os.path.basename(pdf_path)
+
+    chunks = create_chunks(
+        pages,
+        document_name
+    )
 
     chunks = create_embeddings(chunks)
 

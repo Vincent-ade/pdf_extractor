@@ -470,7 +470,7 @@ def show_pdf_preview():
 
 def show_source(source, key):
     """
-    Displays a compact source card.
+    Displays a compact source item.
     """
 
     document = source["document"]
@@ -484,17 +484,10 @@ def show_source(source, key):
     with col1:
 
         st.markdown(
-            f"""
-            <div class="source-card">
-                <div class="source-document">
-                    📄 {document}
-                </div>
-
-                <div class="source-page">
-                    Page {page}
-                </div>
-            </div>
-            """,
+            f"""<div class="source-card">
+<div class="source-document">📄 {document}</div>
+<div class="source-page">Page {page}</div>
+</div>""",
             unsafe_allow_html=True,
         )
 
@@ -515,7 +508,6 @@ def show_source(source, key):
             )
 
             st.rerun()
-
 
 # ============================================================
 # LOAD CHAT HISTORY

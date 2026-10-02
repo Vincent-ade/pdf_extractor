@@ -1,96 +1,120 @@
 {
-  "bee0ff47702cc2c6065cdf423e55e477708ea8b699f8364c38616782b2105054": [
-    {
-      "question": "what is data center?",
-      "answer": "A data center is a large building or complex that houses servers, storage systems, and network devices, providing a central location for computer systems and data processing.",
-      "sources": [
+    "bee0ff47702cc2c6065cdf423e55e477708ea8b699f8364c38616782b2105054": [
         {
-          "document": "System Design Interview by Alex Xu.pdf",
-          "page": 24
-        },
-        {
-          "document": "System Design Interview by Alex Xu.pdf",
-          "page": 23
-        },
-        {
-          "document": "System Design Interview by Alex Xu.pdf",
-          "page": 176
+            "question": "what is data center?",
+            "answer": "A data center is a large building or complex that houses servers, storage systems, and network devices, providing a central location for computer systems and data processing.",
+            "sources": [
+                {
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 24
+                },
+                {
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 23
+                },
+                {
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 176
+                }
+            ]
         }
-      ]
-    }
-  ],
-  "63abec9eb788e86315e74e4d46068ea0d008e4757e29037e381089295f126103": [
-    {
-      "question": "What is the first point given in the PDF?",
-      "answer": "The first point given in the PDF is:\n\n1. God Is a Rewarder by His Nature: God does not merely give rewards occasionally; rewarding faithfulness is part of His character. Heb. 11:6 declares that He rewards those who diligently seek Him. Abraham experienced God's reward through obedience Gen. 22:15–18, while Solomon received wisdom, riches and honour because his request pleased the Lord 1 Kgs. 3:10–13. Since God never changes Mal. 3:6, believers today can confidently serve Him knowing that every act of genuine faith and obedience will be rewarded in His perfect time.",
-      "sources": [
+    ],
+    "63abec9eb788e86315e74e4d46068ea0d008e4757e29037e381089295f126103": [
         {
-          "document": "sample-doc.pdf",
-          "page": 1
+            "question": "What is the first point given in the PDF?",
+            "answer": "The first point given in the PDF is:\n\n1. God Is a Rewarder by His Nature: God does not merely give rewards occasionally; rewarding faithfulness is part of His character. Heb. 11:6 declares that He rewards those who diligently seek Him. Abraham experienced God's reward through obedience Gen. 22:15–18, while Solomon received wisdom, riches and honour because his request pleased the Lord 1 Kgs. 3:10–13. Since God never changes Mal. 3:6, believers today can confidently serve Him knowing that every act of genuine faith and obedience will be rewarded in His perfect time.",
+            "sources": [
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 2
+                }
+            ]
         },
         {
-          "document": "sample-doc.pdf",
-          "page": 1
+            "question": "Explain it in simple terms.",
+            "answer": "God is a Rewarder because it's part of His character. He rewards people who trust Him, obey His Word, and remain faithful. This means that God looks at the heart, not just what people do on the outside.",
+            "sources": [
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 2
+                }
+            ]
         },
         {
-          "document": "sample-doc.pdf",
-          "page": 2
+            "question": "What is the second point?",
+            "answer": "The second point given in the PDF is:\n\n2. God Rewards According to His Righteous Standards: God's reward system is based on righteousness rather than outward appearance or human recognition. While people judge what they see, God examines the heart and the motives behind every action 1 Sam. 16:7. Jesus taught that giving, praying, and fasting done to impress others receive only human applause, but those done sincerely before God receive His reward Matt. 6:1–6, 16–18. Therefore, believers should seek God's approval above man's, knowing that He faithfully rewards obedience, sincerity, and faithfulness Rom. 2:6–7.",
+            "sources": [
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                }
+            ]
+        },
+        {
+            "question": "How is it different from the first one?",
+            "answer": "The first and second points are related but differ in their focus. The first point (God Is a Rewarder by His Nature) emphasizes that God rewards faithfulness as part of His character, indicating that He has a nature to reward those who trust Him and obey His Word. The second point (God Rewards According to His Righteous Standards) focuses on the fact that God's reward system is based on righteousness rather than outward appearance or human recognition. In other words, God rewards people based on their inner motivations and actions, not just what they do on the outside.",
+            "sources": [
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                }
+            ]
         }
-      ]
-    },
-    {
-      "question": "Explain it in simple terms.",
-      "answer": "God is a Rewarder because it's part of His character. He rewards people who trust Him, obey His Word, and remain faithful. This means that God looks at the heart, not just what people do on the outside.",
-      "sources": [
+    ],
+    "948ee388d5ce73a8329a06ad2185ed2b": [
         {
-          "document": "sample-doc.pdf",
-          "page": 1
+            "role": "user",
+            "content": "What is horizontal scaling?"
         },
         {
-          "document": "sample-doc.pdf",
-          "page": 1
-        },
-        {
-          "document": "sample-doc.pdf",
-          "page": 2
+            "role": "assistant",
+            "content": "Horizontal scaling, also known as sharding, is the practice of adding more servers to a system to scale it. It involves separating large databases into smaller, more easily managed parts called shards, and allocating user data to a database server based on user IDs. This allows for efficient and even distribution of requests and data across multiple servers, which can help improve the overall performance and availability of the system.",
+            "sources": [
+                {
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 9
+                },
+                {
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 71
+                },
+                {
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 28
+                }
+            ]
         }
-      ]
-    },
-    {
-      "question": "What is the second point?",
-      "answer": "The second point given in the PDF is:\n\n2. God Rewards According to His Righteous Standards: God's reward system is based on righteousness rather than outward appearance or human recognition. While people judge what they see, God examines the heart and the motives behind every action 1 Sam. 16:7. Jesus taught that giving, praying, and fasting done to impress others receive only human applause, but those done sincerely before God receive His reward Matt. 6:1–6, 16–18. Therefore, believers should seek God's approval above man's, knowing that He faithfully rewards obedience, sincerity, and faithfulness Rom. 2:6–7.",
-      "sources": [
-        {
-          "document": "sample-doc.pdf",
-          "page": 1
-        },
-        {
-          "document": "sample-doc.pdf",
-          "page": 1
-        },
-        {
-          "document": "sample-doc.pdf",
-          "page": 1
-        }
-      ]
-    },
-    {
-      "question": "How is it different from the first one?",
-      "answer": "The first and second points are related but differ in their focus. The first point (God Is a Rewarder by His Nature) emphasizes that God rewards faithfulness as part of His character, indicating that He has a nature to reward those who trust Him and obey His Word. The second point (God Rewards According to His Righteous Standards) focuses on the fact that God's reward system is based on righteousness rather than outward appearance or human recognition. In other words, God rewards people based on their inner motivations and actions, not just what they do on the outside.",
-      "sources": [
-        {
-          "document": "sample-doc.pdf",
-          "page": 1
-        },
-        {
-          "document": "sample-doc.pdf",
-          "page": 1
-        },
-        {
-          "document": "sample-doc.pdf",
-          "page": 1
-        }
-      ]
-    }
-  ]
+    ]
 }

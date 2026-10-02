@@ -11,7 +11,6 @@ from extract import (
 )
 
 from embedding import create_embeddings
-
 from similarity_search import search
 
 from ollama_client import (
@@ -42,16 +41,147 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <style>
+
+    /* Main app */
+
+    .block-container {
+        padding-top: 1.5rem;
+        padding-bottom: 1rem;
+        max-width: 1500px;
+    }
+
+
+    /* Header */
+
+    .app-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .app-title {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.2rem;
+    }
+
+    .app-subtitle {
+        color: #6b7280;
+        font-size: 0.95rem;
+    }
+
+
+    /* Workspace */
+
+    .workspace-panel {
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        padding: 1rem;
+        background: white;
+        min-height: 600px;
+    }
+
+
+    /* Section headers */
+
+    .section-title {
+        font-size: 1.05rem;
+        font-weight: 650;
+        margin-bottom: 0.75rem;
+    }
+
+
+    /* PDF page */
+
+    .pdf-page-container {
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 0.5rem;
+        background: #f8fafc;
+    }
+
+
+    /* Sources */
+
+    .source-card {
+        border: 1px solid #e5e7eb;
+        border-radius: 9px;
+        padding: 0.55rem 0.7rem;
+        margin-bottom: 0.45rem;
+        background: #fafafa;
+    }
+
+    .source-document {
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+
+    .source-page {
+        color: #6b7280;
+        font-size: 0.78rem;
+    }
+
+
+    /* Chat */
+
+    [data-testid="stChatMessage"] {
+        padding-top: 0.4rem;
+        padding-bottom: 0.4rem;
+    }
+
+
+    /* Buttons */
+
+    .stButton > button {
+        border-radius: 8px;
+    }
+
+
+    /* Sidebar */
+
+    section[data-testid="stSidebar"] {
+        border-right: 1px solid #e5e7eb;
+    }
+
+
+    /* Divider */
+
+    hr {
+        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 
 # ============================================================
-# HELPER FUNCTIONS
+# SESSION STATE
+# ============================================================
+
+defaults = {
+    "chunks": [],
+    "document_names": [],
+    "summary": "",
+    "chat_history": [],
+    "chat_workspace_key": "",
+    "pdf_preview_document": None,
+    "pdf_preview_page": 1,
+}
+
+for key, value in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
+
+
+# ============================================================
+# HELPERS
 # ============================================================
 
 def get_workspace_key(document_names):
-    """
-    Creates a unique key for the currently selected PDFs.
-    """
-
     joined = "|".join(sorted(document_names))
 
     return hashlib.md5(
@@ -60,10 +190,6 @@ def get_workspace_key(document_names):
 
 
 def load_chat_histories():
-    """
-    Loads saved chat history from chat_history.json.
-    """
-
     if not os.path.exists(HISTORY_FILE):
         return {}
 
@@ -80,10 +206,6 @@ def load_chat_histories():
 
 
 def save_chat_histories(histories):
-    """
-    Saves chat history.
-    """
-
     with open(
         HISTORY_FILE,
         "w",
@@ -99,13 +221,7 @@ def save_chat_histories(histories):
 
 
 def get_cache_path(pdf_path):
-    """
-    Creates a cache filename based on the PDF name and
-    modification time.
-    """
-
     filename = os.path.basename(pdf_path)
-
     modified_time = os.path.getmtime(pdf_path)
 
     cache_key = hashlib.md5(
@@ -119,10 +235,6 @@ def get_cache_path(pdf_path):
 
 
 def load_embeddings_cache(cache_path):
-    """
-    Loads embeddings from cache.
-    """
-
     import pickle
 
     if not os.path.exists(cache_path):
@@ -137,10 +249,6 @@ def load_embeddings_cache(cache_path):
 
 
 def save_embeddings_cache(cache_path, chunks):
-    """
-    Saves chunks and embeddings to cache.
-    """
-
     import pickle
 
     with open(cache_path, "wb") as file:
@@ -148,14 +256,11 @@ def save_embeddings_cache(cache_path, chunks):
 
 
 def process_pdf(pdf_path):
-    """
-    Extracts, chunks and embeds a PDF.
-    Uses cached embeddings when available.
-    """
-
     cache_path = get_cache_path(pdf_path)
 
-    cached_chunks = load_embeddings_cache(cache_path)
+    cached_chunks = load_embeddings_cache(
+        cache_path
+    )
 
     if cached_chunks is not None:
         return cached_chunks
@@ -180,10 +285,6 @@ def process_pdf(pdf_path):
 
 
 def get_pdf_page_count(document_name):
-    """
-    Returns the number of pages in a PDF.
-    """
-
     pdf_path = os.path.join(
         PDF_FOLDER,
         document_name
@@ -201,10 +302,6 @@ def get_pdf_page_count(document_name):
 
 
 def render_pdf_page(document_name, page_number):
-    """
-    Renders one PDF page as an image.
-    """
-
     pdf_path = os.path.join(
         PDF_FOLDER,
         document_name
@@ -216,11 +313,16 @@ def render_pdf_page(document_name, page_number):
     try:
         with pymupdf.open(pdf_path) as doc:
 
-            if page_number < 1:
-                page_number = 1
+            if not doc:
+                return None
 
-            if page_number > len(doc):
-                page_number = len(doc)
+            page_number = max(
+                1,
+                min(
+                    page_number,
+                    len(doc)
+                )
+            )
 
             page = doc[page_number - 1]
 
@@ -240,268 +342,37 @@ def render_pdf_page(document_name, page_number):
         return None
 
 
-def set_preview_page(document_name, page_number):
+def show_pdf_preview():
     """
-    Changes the PDF preview document and page.
+    Displays the PDF viewer.
     """
 
-    st.session_state.pdf_preview_document = document_name
-    st.session_state.pdf_preview_page = page_number
+    documents = st.session_state.document_names
 
+    if not documents:
+        return
 
-# ============================================================
-# SESSION STATE
-# ============================================================
-
-if "chunks" not in st.session_state:
-    st.session_state.chunks = []
-
-if "document_names" not in st.session_state:
-    st.session_state.document_names = []
-
-if "summary" not in st.session_state:
-    st.session_state.summary = ""
-
-if "answer" not in st.session_state:
-    st.session_state.answer = ""
-
-if "sources" not in st.session_state:
-    st.session_state.sources = []
-
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
-
-if "chat_workspace_key" not in st.session_state:
-    st.session_state.chat_workspace_key = ""
-
-if "pdf_preview_document" not in st.session_state:
-    st.session_state.pdf_preview_document = None
-
-if "pdf_preview_page" not in st.session_state:
-    st.session_state.pdf_preview_page = 1
-
-
-# ============================================================
-# LOAD SAVED CHAT HISTORIES
-# ============================================================
-
-chat_histories = load_chat_histories()
-
-
-# ============================================================
-# HEADER
-# ============================================================
-
-st.title("📄 Local PDF Assistant")
-
-st.caption(
-    "Ask questions, summarize documents, and inspect source pages."
-)
-
-
-# ============================================================
-# PDF LIBRARY
-# ============================================================
-
-st.sidebar.header("📚 PDF Library")
-
-existing_pdfs = sorted(
-    [
-        filename
-        for filename in os.listdir(PDF_FOLDER)
-        if filename.lower().endswith(".pdf")
-    ]
-)
-
-
-selected_pdfs = st.sidebar.multiselect(
-    "Select PDFs",
-    existing_pdfs,
-)
-
-
-uploaded_files = st.sidebar.file_uploader(
-    "Add new PDFs",
-    type=["pdf"],
-    accept_multiple_files=True,
-)
-
-
-if uploaded_files:
-
-    for uploaded_file in uploaded_files:
-
-        save_path = os.path.join(
-            PDF_FOLDER,
-            uploaded_file.name
-        )
-
-        with open(
-            save_path,
-            "wb"
-        ) as file:
-
-            file.write(
-                uploaded_file.getbuffer()
-            )
-
-    st.sidebar.success(
-        "PDF uploaded successfully."
-    )
-
-    st.rerun()
-
-
-# ============================================================
-# PROCESS DOCUMENTS
-# ============================================================
-
-if selected_pdfs:
-
-    if st.sidebar.button(
-        "Process selected PDFs",
-        type="primary"
-    ):
-
-        all_chunks = []
-        document_names = []
-
-        progress = st.sidebar.progress(0)
-
-        total = len(selected_pdfs)
-
-        for index, document_name in enumerate(
-            selected_pdfs
-        ):
-
-            pdf_path = os.path.join(
-                PDF_FOLDER,
-                document_name
-            )
-
-            try:
-
-                chunks = process_pdf(
-                    pdf_path
-                )
-
-                all_chunks.extend(chunks)
-
-                document_names.append(
-                    document_name
-                )
-
-            except Exception as error:
-
-                st.sidebar.error(
-                    f"Could not process {document_name}: {error}"
-                )
-
-            progress.progress(
-                (index + 1) / total
-            )
-
-        st.session_state.chunks = all_chunks
-
-        st.session_state.document_names = document_names
-
-        # Reset preview
-        if document_names:
-
-            st.session_state.pdf_preview_document = (
-                document_names[0]
-            )
-
-            st.session_state.pdf_preview_page = 1
-
-        # Load the correct saved chat history
-        workspace_key = get_workspace_key(
-            document_names
-        )
-
-        st.session_state.chat_workspace_key = (
-            workspace_key
-        )
-
-        st.session_state.chat_history = (
-            chat_histories.get(
-                workspace_key,
-                []
-            )
-        )
-
-        st.session_state.summary = ""
-
-        st.sidebar.success(
-            f"{len(document_names)} PDF(s) ready."
-        )
-
-
-# ============================================================
-# CHECK WHETHER DOCUMENTS ARE LOADED
-# ============================================================
-
-if not st.session_state.chunks:
-
-    st.info(
-        "Select one or more PDFs from the sidebar, "
-        "then click **Process selected PDFs**."
-    )
-
-    st.stop()
-
-
-# ============================================================
-# PDF PREVIEW
-# ============================================================
-
-st.divider()
-
-st.subheader("📖 PDF Preview")
-
-preview_documents = st.session_state.document_names
-
-
-# Make sure selected preview document still exists
-if (
-    st.session_state.pdf_preview_document
-    not in preview_documents
-):
-
-    st.session_state.pdf_preview_document = (
-        preview_documents[0]
-    )
-
-    st.session_state.pdf_preview_page = 1
-
-
-preview_document = st.selectbox(
-    "Document",
-    preview_documents,
-    index=preview_documents.index(
+    # Make sure a valid document is selected
+    if (
         st.session_state.pdf_preview_document
-    ),
-)
+        not in documents
+    ):
+        st.session_state.pdf_preview_document = (
+            documents[0]
+        )
+        st.session_state.pdf_preview_page = 1
 
+    document = st.session_state.pdf_preview_document
 
-if preview_document != st.session_state.pdf_preview_document:
-
-    st.session_state.pdf_preview_document = (
-        preview_document
+    page_count = get_pdf_page_count(
+        document
     )
 
-    st.session_state.pdf_preview_page = 1
+    if page_count == 0:
+        st.error("Unable to open this PDF.")
+        return
 
-
-page_count = get_pdf_page_count(
-    st.session_state.pdf_preview_document
-)
-
-current_page = st.session_state.pdf_preview_page
-
-
-# Keep page within valid range
-if page_count > 0:
+    current_page = st.session_state.pdf_preview_page
 
     current_page = max(
         1,
@@ -513,407 +384,652 @@ if page_count > 0:
 
     st.session_state.pdf_preview_page = current_page
 
+    # Document selector
+    selected_document = st.selectbox(
+        "Document",
+        documents,
+        index=documents.index(document),
+        key="preview_document_selector",
+    )
 
-# Navigation
-preview_col1, preview_col2, preview_col3 = st.columns(
-    [1, 2, 1]
-)
+    if selected_document != document:
 
+        st.session_state.pdf_preview_document = (
+            selected_document
+        )
 
-with preview_col1:
-
-    if st.button(
-        "← Previous",
-        disabled=current_page <= 1,
-        use_container_width=True
-    ):
-
-        st.session_state.pdf_preview_page -= 1
+        st.session_state.pdf_preview_page = 1
 
         st.rerun()
 
+    # Page controls
+    previous_col, page_col, next_col = st.columns(
+        [1, 2, 1]
+    )
 
-with preview_col2:
+    with previous_col:
+
+        if st.button(
+            "← Previous",
+            disabled=current_page <= 1,
+            use_container_width=True,
+            key="preview_previous",
+        ):
+
+            st.session_state.pdf_preview_page -= 1
+
+            st.rerun()
+
+    with page_col:
+
+        st.markdown(
+            f"""
+            <div style="
+                text-align:center;
+                padding:8px;
+                font-weight:600;
+            ">
+                Page {current_page} of {page_count}
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with next_col:
+
+        if st.button(
+            "Next →",
+            disabled=current_page >= page_count,
+            use_container_width=True,
+            key="preview_next",
+        ):
+
+            st.session_state.pdf_preview_page += 1
+
+            st.rerun()
+
+    # PDF page
+    image = render_pdf_page(
+        document,
+        current_page
+    )
+
+    if image:
+
+        st.image(
+            image,
+            use_container_width=True
+        )
+
+    else:
+
+        st.error(
+            "Could not render this PDF page."
+        )
+
+
+def show_source(source, key):
+    """
+    Displays a compact source card.
+    """
+
+    document = source["document"]
+    page = source["page"]
+
+    col1, col2 = st.columns(
+        [4, 1],
+        vertical_alignment="center"
+    )
+
+    with col1:
+
+        st.markdown(
+            f"""
+            <div class="source-card">
+                <div class="source-document">
+                    📄 {document}
+                </div>
+
+                <div class="source-page">
+                    Page {page}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+    with col2:
+
+        if st.button(
+            "View",
+            key=key,
+            use_container_width=True,
+        ):
+
+            st.session_state.pdf_preview_document = (
+                document
+            )
+
+            st.session_state.pdf_preview_page = (
+                page
+            )
+
+            st.rerun()
+
+
+# ============================================================
+# LOAD CHAT HISTORY
+# ============================================================
+
+chat_histories = load_chat_histories()
+
+
+# ============================================================
+# SIDEBAR
+# ============================================================
+
+with st.sidebar:
 
     st.markdown(
-        f"<div style='text-align:center; padding-top:7px;'>"
-        f"<b>Page {current_page} of {page_count}</b>"
-        f"</div>",
-        unsafe_allow_html=True
+        "## 📄 PDF Assistant"
     )
 
+    st.caption(
+        "Local document Q&A and summarization"
+    )
 
-with preview_col3:
+    st.divider()
 
-    if st.button(
-        "Next →",
-        disabled=current_page >= page_count,
-        use_container_width=True
-    ):
+    st.markdown(
+        "### PDF Library"
+    )
 
-        st.session_state.pdf_preview_page += 1
+    existing_pdfs = sorted(
+        [
+            filename
+            for filename in os.listdir(
+                PDF_FOLDER
+            )
+            if filename.lower().endswith(".pdf")
+        ]
+    )
+
+    selected_pdfs = st.multiselect(
+        "Select documents",
+        existing_pdfs,
+    )
+
+    uploaded_files = st.file_uploader(
+        "Add PDFs",
+        type=["pdf"],
+        accept_multiple_files=True,
+    )
+
+    if uploaded_files:
+
+        for uploaded_file in uploaded_files:
+
+            save_path = os.path.join(
+                PDF_FOLDER,
+                uploaded_file.name
+            )
+
+            with open(
+                save_path,
+                "wb"
+            ) as file:
+
+                file.write(
+                    uploaded_file.getbuffer()
+                )
+
+        st.success(
+            "PDF uploaded."
+        )
 
         st.rerun()
 
+    st.divider()
 
-# Render current page
-page_image = render_pdf_page(
-    st.session_state.pdf_preview_document,
-    current_page
-)
+    if selected_pdfs:
 
-
-if page_image:
-
-    st.image(
-        page_image,
-        use_container_width=True
-    )
-
-else:
-
-    st.error(
-        "Could not display this PDF page."
-    )
-
-
-# ============================================================
-# MAIN TABS
-# ============================================================
-
-st.divider()
-
-qa_tab, summary_tab = st.tabs(
-    [
-        "💬 Q&A",
-        "📝 Summarize"
-    ]
-)
-
-
-# ============================================================
-# Q&A
-# ============================================================
-
-with qa_tab:
-
-    st.subheader("Ask your documents")
-
-    # Display previous conversation
-    for message in st.session_state.chat_history:
-
-        with st.chat_message(
-            message["role"]
+        if st.button(
+            "Process documents",
+            type="primary",
+            use_container_width=True,
         ):
 
-            st.markdown(
-                message["content"]
-            )
+            all_chunks = []
+            document_names = []
 
-            # Display sources for assistant messages
-            if (
-                message["role"] == "assistant"
-                and message.get("sources")
+            progress = st.progress(0)
+
+            total = len(selected_pdfs)
+
+            for index, document_name in enumerate(
+                selected_pdfs
             ):
 
-                st.markdown(
-                    "**Sources**"
+                pdf_path = os.path.join(
+                    PDF_FOLDER,
+                    document_name
                 )
-
-                for source_index, source in enumerate(
-                    message["sources"]
-                ):
-
-                    document = source["document"]
-                    page = source["page"]
-
-                    st.write(
-                        f"📄 {document} — Page {page}"
-                    )
-
-                    if st.button(
-                        f"View page {page}",
-                        key=(
-                            f"history_source_"
-                            f"{len(st.session_state.chat_history)}_"
-                            f"{source_index}"
-                        )
-                    ):
-
-                        set_preview_page(
-                            document,
-                            page
-                        )
-
-                        st.rerun()
-
-
-    question = st.chat_input(
-        "Ask a question about your PDF..."
-    )
-
-
-    if question:
-
-        # Add user question
-        st.session_state.chat_history.append(
-            {
-                "role": "user",
-                "content": question
-            }
-        )
-
-
-        with st.chat_message("user"):
-
-            st.markdown(question)
-
-
-        # ----------------------------------------------------
-        # Rewrite follow-up questions
-        # ----------------------------------------------------
-
-        search_question = question
-
-        previous_messages = (
-            st.session_state.chat_history[:-1]
-        )
-
-        if previous_messages:
-
-            try:
-
-                search_question = (
-                    rewrite_followup_question(
-                        question,
-                        previous_messages
-                    )
-                )
-
-            except Exception:
-
-                search_question = question
-
-
-        # ----------------------------------------------------
-        # Search
-        # ----------------------------------------------------
-
-        if is_document_wide_question(
-            search_question
-        ):
-
-            context, sources = (
-                build_document_context(
-                    st.session_state.chunks
-                )
-            )
-
-        else:
-
-            results = search(
-                search_question,
-                st.session_state.chunks,
-                top_k=3
-            )
-
-            context, sources = build_context(
-                results
-            )
-
-
-        # ----------------------------------------------------
-        # Generate answer
-        # ----------------------------------------------------
-
-        with st.chat_message("assistant"):
-
-            with st.spinner(
-                "Thinking..."
-            ):
 
                 try:
 
-                    answer = generate_answer(
-                        question,
-                        context
+                    chunks = process_pdf(
+                        pdf_path
                     )
 
-                except Exception as error:
-
-                    answer = (
-                        f"Error generating answer: {error}"
+                    all_chunks.extend(
+                        chunks
                     )
 
-
-            st.markdown(answer)
-
-
-            # Sources
-            if sources:
-
-                st.markdown(
-                    "**Sources**"
-                )
-
-                for source_index, source in enumerate(
-                    sources
-                ):
-
-                    document = source["document"]
-                    page = source["page"]
-
-                    source_col1, source_col2 = st.columns(
-                        [4, 1]
-                    )
-
-                    with source_col1:
-
-                        st.write(
-                            f"📄 {document} — Page {page}"
-                        )
-
-                    with source_col2:
-
-                        if st.button(
-                            "View page",
-                            key=(
-                                f"current_source_"
-                                f"{source_index}_"
-                                f"{question}"
-                            )
-                        ):
-
-                            set_preview_page(
-                                document,
-                                page
-                            )
-
-                            st.rerun()
-
-
-        # ----------------------------------------------------
-        # Save conversation
-        # ----------------------------------------------------
-
-        st.session_state.chat_history.append(
-            {
-                "role": "assistant",
-                "content": answer,
-                "sources": sources
-            }
-        )
-
-
-        # Save persistent history
-        workspace_key = (
-            st.session_state.chat_workspace_key
-        )
-
-        if workspace_key:
-
-            chat_histories[
-                workspace_key
-            ] = st.session_state.chat_history
-
-            save_chat_histories(
-                chat_histories
-            )
-
-        st.rerun()
-
-
-# ============================================================
-# SUMMARIZE
-# ============================================================
-
-with summary_tab:
-
-    st.subheader("Document Summary")
-
-    st.write(
-        "Generate a summary of the selected documents."
-    )
-
-
-    if st.button(
-        "Generate Summary",
-        type="primary"
-    ):
-
-        all_summaries = []
-
-        batches = create_chunk_batches(
-            st.session_state.chunks,
-            batch_size=5
-        )
-
-
-        progress = st.progress(0)
-
-        total_batches = len(batches)
-
-
-        for index, batch in enumerate(
-            batches
-        ):
-
-            try:
-
-                batch_summary = summarize_batch(
-                    batch
-                )
-
-                all_summaries.append(
-                    batch_summary
-                )
-
-            except Exception as error:
-
-                st.error(
-                    f"Error summarizing batch "
-                    f"{index + 1}: {error}"
-                )
-
-            progress.progress(
-                (index + 1) / total_batches
-            )
-
-
-        if all_summaries:
-
-            with st.spinner(
-                "Combining summaries..."
-            ):
-
-                try:
-
-                    final_summary = combine_summaries(
-                        all_summaries
-                    )
-
-                    st.session_state.summary = (
-                        final_summary
+                    document_names.append(
+                        document_name
                     )
 
                 except Exception as error:
 
                     st.error(
-                        f"Error combining summaries: {error}"
+                        f"Could not process "
+                        f"{document_name}: {error}"
                     )
 
+                progress.progress(
+                    (index + 1) / total
+                )
 
-    # Display saved summary
-    if st.session_state.summary:
+            st.session_state.chunks = (
+                all_chunks
+            )
+
+            st.session_state.document_names = (
+                document_names
+            )
+
+            if document_names:
+
+                st.session_state.pdf_preview_document = (
+                    document_names[0]
+                )
+
+                st.session_state.pdf_preview_page = 1
+
+            workspace_key = get_workspace_key(
+                document_names
+            )
+
+            st.session_state.chat_workspace_key = (
+                workspace_key
+            )
+
+            st.session_state.chat_history = (
+                chat_histories.get(
+                    workspace_key,
+                    []
+                )
+            )
+
+            st.session_state.summary = ""
+
+            st.success(
+                f"{len(document_names)} "
+                f"document(s) ready."
+            )
+
+
+# ============================================================
+# HEADER
+# ============================================================
+
+st.title("📄 Local PDF Assistant")
+
+st.caption(
+    "Ask questions, explore your documents, and generate summaries with local AI."
+)
+
+
+# ============================================================
+# NO DOCUMENTS
+# ============================================================
+
+if not st.session_state.chunks:
+
+    st.info(
+        "Select a PDF from the sidebar and "
+        "click **Process documents**."
+    )
+
+    st.stop()
+
+
+# ============================================================
+# MAIN WORKSPACE
+# ============================================================
+
+pdf_column, chat_column = st.columns(
+    [1.05, 0.95],
+    gap="large"
+)
+
+
+# ============================================================
+# PDF COLUMN
+# ============================================================
+
+with pdf_column:
+
+    st.markdown(
+        """
+        <div class="section-title">
+            📖 PDF Preview
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    show_pdf_preview()
+
+
+# ============================================================
+# CHAT COLUMN
+# ============================================================
+
+with chat_column:
+
+    st.markdown(
+        """
+        <div class="section-title">
+            💬 Ask your documents
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    qa_tab, summary_tab = st.tabs(
+        [
+            "Chat",
+            "Summary"
+        ]
+    )
+
+
+    # ========================================================
+    # CHAT
+    # ========================================================
+
+    with qa_tab:
+
+        # Existing messages
+        for message_index, message in enumerate(
+            st.session_state.chat_history
+        ):
+
+            with st.chat_message(
+                message["role"]
+            ):
+
+                st.markdown(
+                    message["content"]
+                )
+
+                if (
+                    message["role"] == "assistant"
+                    and message.get("sources")
+                ):
+
+                    st.markdown(
+                        "**Sources**"
+                    )
+
+                    for source_index, source in enumerate(
+                        message["sources"]
+                    ):
+
+                        show_source(
+                            source,
+                            (
+                                f"history_"
+                                f"{message_index}_"
+                                f"{source_index}"
+                            )
+                        )
+
+
+        question = st.chat_input(
+            "Ask something about your PDF..."
+        )
+
+
+        if question:
+
+            # Add user message
+            st.session_state.chat_history.append(
+                {
+                    "role": "user",
+                    "content": question
+                }
+            )
+
+
+            with st.chat_message("user"):
+
+                st.markdown(
+                    question
+                )
+
+
+            # Follow-up rewriting
+            search_question = question
+
+            previous_messages = (
+                st.session_state.chat_history[:-1]
+            )
+
+            if previous_messages:
+
+                try:
+
+                    search_question = (
+                        rewrite_followup_question(
+                            question,
+                            previous_messages
+                        )
+                    )
+
+                except Exception:
+
+                    search_question = question
+
+
+            # Search
+            if is_document_wide_question(
+                search_question
+            ):
+
+                context, sources = (
+                    build_document_context(
+                        st.session_state.chunks
+                    )
+                )
+
+            else:
+
+                results = search(
+                    search_question,
+                    st.session_state.chunks,
+                    top_k=3
+                )
+
+                context, sources = build_context(
+                    results
+                )
+
+
+            # Generate answer
+            with st.chat_message(
+                "assistant"
+            ):
+
+                with st.spinner(
+                    "Thinking..."
+                ):
+
+                    try:
+
+                        answer = generate_answer(
+                            question,
+                            context
+                        )
+
+                    except Exception as error:
+
+                        answer = (
+                            f"Error generating answer: "
+                            f"{error}"
+                        )
+
+                st.markdown(
+                    answer
+                )
+
+
+                # Sources
+                if sources:
+
+                    st.markdown(
+                        "**Sources**"
+                    )
+
+                    for source_index, source in enumerate(
+                        sources
+                    ):
+
+                        show_source(
+                            source,
+                            (
+                                f"current_"
+                                f"{source_index}_"
+                                f"{hash(question)}"
+                            )
+                        )
+
+
+            # Save assistant message
+            st.session_state.chat_history.append(
+                {
+                    "role": "assistant",
+                    "content": answer,
+                    "sources": sources,
+                }
+            )
+
+
+            # Save persistent history
+            workspace_key = (
+                st.session_state.chat_workspace_key
+            )
+
+            if workspace_key:
+
+                chat_histories[
+                    workspace_key
+                ] = st.session_state.chat_history
+
+                save_chat_histories(
+                    chat_histories
+                )
+
+            st.rerun()
+
+
+    # ========================================================
+    # SUMMARY
+    # ========================================================
+
+    with summary_tab:
 
         st.markdown(
-            st.session_state.summary
+            "Generate a summary of the selected documents."
         )
 
+        if st.button(
+            "Generate Summary",
+            type="primary",
+            use_container_width=True,
+            key="generate_summary",
+        ):
 
-        st.download_button(
-            "⬇️ Download Summary",
-            data=st.session_state.summary,
-            file_name="pdf_summary.txt",
-            mime="text/plain"
-        )
+            all_summaries = []
+
+            batches = create_chunk_batches(
+                st.session_state.chunks,
+                batch_size=5
+            )
+
+            progress = st.progress(0)
+
+            total_batches = len(batches)
+
+            for index, batch in enumerate(
+                batches
+            ):
+
+                try:
+
+                    batch_summary = summarize_batch(
+                        batch
+                    )
+
+                    all_summaries.append(
+                        batch_summary
+                    )
+
+                except Exception as error:
+
+                    st.error(
+                        f"Error summarizing batch "
+                        f"{index + 1}: {error}"
+                    )
+
+                progress.progress(
+                    (index + 1) / total_batches
+                )
+
+
+            if all_summaries:
+
+                with st.spinner(
+                    "Combining summaries..."
+                ):
+
+                    try:
+
+                        st.session_state.summary = (
+                            combine_summaries(
+                                all_summaries
+                            )
+                        )
+
+                    except Exception as error:
+
+                        st.error(
+                            f"Error combining summaries: "
+                            f"{error}"
+                        )
+
+
+        if st.session_state.summary:
+
+            st.markdown(
+                st.session_state.summary
+            )
+
+            st.download_button(
+                "⬇️ Download Summary",
+                data=st.session_state.summary,
+                file_name="pdf_summary.txt",
+                mime="text/plain",
+                use_container_width=True,
+            )

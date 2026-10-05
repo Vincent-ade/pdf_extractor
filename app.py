@@ -771,7 +771,7 @@ if not st.session_state.chunks:
 # ============================================================
 
 pdf_column, chat_column = st.columns(
-    [1.05, 0.95],
+    [1.1, 0.9],
     gap="large"
 )
 

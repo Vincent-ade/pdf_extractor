@@ -43,117 +43,91 @@ st.set_page_config(
 
 st.markdown(
     """
-    <style>
+<style>
 
-    /* Main app */
+.block-container {
+    padding-top: 1.2rem;
+    padding-bottom: 1rem;
+    max-width: 1500px;
+}
 
-    .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 1rem;
-        max-width: 1500px;
-    }
+/* Sidebar */
 
+section[data-testid="stSidebar"] {
+    border-right: 1px solid #e5e7eb;
+}
 
-    /* Header */
-
-    .app-header {
-        margin-bottom: 1.5rem;
-    }
-
-    .app-title {
-        font-size: 2rem;
-        font-weight: 700;
-        margin-bottom: 0.2rem;
-    }
-
-    .app-subtitle {
-        color: #6b7280;
-        font-size: 0.95rem;
-    }
+section[data-testid="stSidebar"] .block-container {
+    padding-top: 1.5rem;
+}
 
 
-    /* Workspace */
+/* PDF viewer */
 
-    .workspace-panel {
-        border: 1px solid #e5e7eb;
-        border-radius: 14px;
-        padding: 1rem;
-        background: white;
-        min-height: 600px;
-    }
-
-
-    /* Section headers */
-
-    .section-title {
-        font-size: 1.05rem;
-        font-weight: 650;
-        margin-bottom: 0.75rem;
-    }
+.pdf-viewer {
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f5f5f5;
+    padding: 10px;
+    height: 650px;
+    overflow-y: auto;
+}
 
 
-    /* PDF page */
+/* Source cards */
 
-    .pdf-page-container {
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 0.5rem;
-        background: #f8fafc;
-    }
+.source-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 9px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: #fafafa;
+}
 
+.source-document {
+    font-size: 0.82rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
 
-    /* Sources */
-
-    .source-card {
-        border: 1px solid #e5e7eb;
-        border-radius: 9px;
-        padding: 0.55rem 0.7rem;
-        margin-bottom: 0.45rem;
-        background: #fafafa;
-    }
-
-    .source-document {
-        font-size: 0.82rem;
-        font-weight: 600;
-    }
-
-    .source-page {
-        color: #6b7280;
-        font-size: 0.78rem;
-    }
+.source-page {
+    color: #6b7280;
+    font-size: 0.76rem;
+    margin-top: 2px;
+}
 
 
-    /* Chat */
+/* Chat */
 
-    [data-testid="stChatMessage"] {
-        padding-top: 0.4rem;
-        padding-bottom: 0.4rem;
-    }
-
-
-    /* Buttons */
-
-    .stButton > button {
-        border-radius: 8px;
-    }
+[data-testid="stChatMessage"] {
+    padding-top: 0.35rem;
+    padding-bottom: 0.35rem;
+}
 
 
-    /* Sidebar */
+/* Buttons */
 
-    section[data-testid="stSidebar"] {
-        border-right: 1px solid #e5e7eb;
-    }
+.stButton > button {
+    border-radius: 8px;
+}
 
 
-    /* Divider */
+/* Tabs */
 
-    hr {
-        margin-top: 1rem;
-        margin-bottom: 1rem;
-    }
+button[data-baseweb="tab"] {
+    font-weight: 600;
+}
 
-    </style>
-    """,
+
+/* Dividers */
+
+hr {
+    margin-top: 0.8rem;
+    margin-bottom: 0.8rem;
+}
+
+</style>
+""",
     unsafe_allow_html=True,
 )
 
@@ -344,7 +318,7 @@ def render_pdf_page(document_name, page_number):
 
 def show_pdf_preview():
     """
-    Displays the PDF viewer.
+    Displays the PDF viewer with page navigation.
     """
 
     documents = st.session_state.document_names
@@ -360,6 +334,7 @@ def show_pdf_preview():
         st.session_state.pdf_preview_document = (
             documents[0]
         )
+
         st.session_state.pdf_preview_page = 1
 
     document = st.session_state.pdf_preview_document
@@ -384,7 +359,10 @@ def show_pdf_preview():
 
     st.session_state.pdf_preview_page = current_page
 
+    # --------------------------------------------------------
     # Document selector
+    # --------------------------------------------------------
+
     selected_document = st.selectbox(
         "Document",
         documents,
@@ -402,7 +380,11 @@ def show_pdf_preview():
 
         st.rerun()
 
-    # Page controls
+
+    # --------------------------------------------------------
+    # Page navigation
+    # --------------------------------------------------------
+
     previous_col, page_col, next_col = st.columns(
         [1, 2, 1]
     )
@@ -420,13 +402,14 @@ def show_pdf_preview():
 
             st.rerun()
 
+
     with page_col:
 
         st.markdown(
             f"""
             <div style="
                 text-align:center;
-                padding:8px;
+                padding:8px 0;
                 font-weight:600;
             ">
                 Page {current_page} of {page_count}
@@ -434,6 +417,7 @@ def show_pdf_preview():
             """,
             unsafe_allow_html=True,
         )
+
 
     with next_col:
 
@@ -448,7 +432,11 @@ def show_pdf_preview():
 
             st.rerun()
 
+
+    # --------------------------------------------------------
     # PDF page
+    # --------------------------------------------------------
+
     image = render_pdf_page(
         document,
         current_page
@@ -456,9 +444,19 @@ def show_pdf_preview():
 
     if image:
 
+        st.markdown(
+            '<div class="pdf-viewer">',
+            unsafe_allow_html=True,
+        )
+
         st.image(
             image,
             use_container_width=True
+        )
+
+        st.markdown(
+            "</div>",
+            unsafe_allow_html=True,
         )
 
     else:
@@ -527,13 +525,18 @@ with st.sidebar:
     )
 
     st.caption(
-        "Local document Q&A and summarization"
+        "Local document Q&A"
     )
 
     st.divider()
 
+
+    # ========================================================
+    # LIBRARY
+    # ========================================================
+
     st.markdown(
-        "### PDF Library"
+        "### 📚 Library"
     )
 
     existing_pdfs = sorted(
@@ -546,16 +549,39 @@ with st.sidebar:
         ]
     )
 
-    selected_pdfs = st.multiselect(
-        "Select documents",
-        existing_pdfs,
+
+    if existing_pdfs:
+
+        selected_pdfs = st.multiselect(
+            "Documents",
+            existing_pdfs,
+            placeholder="Choose PDFs...",
+        )
+
+    else:
+
+        selected_pdfs = []
+
+        st.caption(
+            "No PDFs in your library yet."
+        )
+
+
+    # ========================================================
+    # UPLOAD
+    # ========================================================
+
+    st.markdown(
+        "### ➕ Add documents"
     )
 
     uploaded_files = st.file_uploader(
-        "Add PDFs",
+        "Upload PDF files",
         type=["pdf"],
         accept_multiple_files=True,
+        label_visibility="collapsed",
     )
+
 
     if uploaded_files:
 
@@ -576,14 +602,25 @@ with st.sidebar:
                 )
 
         st.success(
-            "PDF uploaded."
+            f"{len(uploaded_files)} PDF(s) added."
         )
 
         st.rerun()
 
-    st.divider()
+
+    # ========================================================
+    # PROCESS
+    # ========================================================
+
+    st.markdown(
+        "### ⚙️ Workspace"
+    )
 
     if selected_pdfs:
+
+        st.caption(
+            f"{len(selected_pdfs)} document(s) selected"
+        )
 
         if st.button(
             "Process documents",
@@ -632,6 +669,7 @@ with st.sidebar:
                     (index + 1) / total
                 )
 
+
             st.session_state.chunks = (
                 all_chunks
             )
@@ -640,6 +678,8 @@ with st.sidebar:
                 document_names
             )
 
+
+            # Set first document as preview
             if document_names:
 
                 st.session_state.pdf_preview_document = (
@@ -648,6 +688,8 @@ with st.sidebar:
 
                 st.session_state.pdf_preview_page = 1
 
+
+            # Load workspace history
             workspace_key = get_workspace_key(
                 document_names
             )
@@ -665,9 +707,37 @@ with st.sidebar:
 
             st.session_state.summary = ""
 
+
             st.success(
                 f"{len(document_names)} "
                 f"document(s) ready."
+            )
+
+    else:
+
+        st.caption(
+            "Select at least one PDF to begin."
+        )
+
+
+    # ========================================================
+    # CURRENT DOCUMENTS
+    # ========================================================
+
+    if st.session_state.document_names:
+
+        st.divider()
+
+        st.markdown(
+            "### 📖 Current workspace"
+        )
+
+        for document in (
+            st.session_state.document_names
+        ):
+
+            st.caption(
+                f"📄 {document}"
             )
 
 

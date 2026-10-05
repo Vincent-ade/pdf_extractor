@@ -69,7 +69,7 @@ section[data-testid="stSidebar"] .block-container {
     border-radius: 12px;
     background: #f5f5f5;
     padding: 10px;
-    height: 650px;
+    max-height: 700px;
     overflow-y: auto;
 }
 

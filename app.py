@@ -276,6 +276,10 @@ def get_pdf_page_count(document_name):
 
 
 def render_pdf_page(document_name, page_number):
+    """
+    Renders one PDF page and removes excessive white margins.
+    """
+
     pdf_path = os.path.join(
         PDF_FOLDER,
         document_name
@@ -310,7 +314,80 @@ def render_pdf_page(document_name, page_number):
                 alpha=False
             )
 
-            return pixmap.tobytes("png")
+            # Convert the rendered page into a PIL image
+            from PIL import Image
+            import io
+
+            image = Image.open(
+                io.BytesIO(
+                    pixmap.tobytes("png")
+                )
+            ).convert("RGB")
+
+            # ------------------------------------------------
+            # Remove white space around the page
+            # ------------------------------------------------
+
+            pixels = image.load()
+
+            width, height = image.size
+
+            # Find the first row that contains
+            # something that isn't almost pure white.
+            top = 0
+
+            for y in range(height):
+
+                found_content = False
+
+                for x in range(
+                    0,
+                    width,
+                    5
+                ):
+
+                    r, g, b = pixels[x, y]
+
+                    if (
+                        r < 245
+                        or g < 245
+                        or b < 245
+                    ):
+
+                        found_content = True
+                        break
+
+                if found_content:
+                    top = y
+                    break
+
+            # Only remove the top whitespace.
+            # Keep a small margin.
+            crop_margin = 8
+
+            top = max(
+                0,
+                top - crop_margin
+            )
+
+            image = image.crop(
+                (
+                    0,
+                    top,
+                    width,
+                    height
+                )
+            )
+
+            # Convert back to PNG bytes
+            output = io.BytesIO()
+
+            image.save(
+                output,
+                format="PNG"
+            )
+
+            return output.getvalue()
 
     except Exception:
         return None
@@ -394,7 +471,7 @@ def show_pdf_preview():
         if st.button(
             "← Previous",
             disabled=current_page <= 1,
-            use_container_width=True,
+            width="stretch",
             key="preview_previous",
         ):
 
@@ -424,7 +501,7 @@ def show_pdf_preview():
         if st.button(
             "Next →",
             disabled=current_page >= page_count,
-            use_container_width=True,
+            width="stretch",
             key="preview_next",
         ):
 
@@ -451,7 +528,7 @@ def show_pdf_preview():
 
         st.image(
             image,
-            use_container_width=True
+            width="stretch"
         )
 
         st.markdown(
@@ -494,7 +571,7 @@ def show_source(source, key):
         if st.button(
             "View",
             key=key,
-            use_container_width=True,
+            width="stretch",
         ):
 
             st.session_state.pdf_preview_document = (
@@ -625,7 +702,7 @@ with st.sidebar:
         if st.button(
             "Process documents",
             type="primary",
-            use_container_width=True,
+            width="stretch",
         ):
 
             all_chunks = []
@@ -1019,7 +1096,7 @@ with chat_column:
         if st.button(
             "Generate Summary",
             type="primary",
-            use_container_width=True,
+            width="stretch",
             key="generate_summary",
         ):
 
@@ -1093,5 +1170,5 @@ with chat_column:
                 data=st.session_state.summary,
                 file_name="pdf_summary.txt",
                 mime="text/plain",
-                use_container_width=True,
+                width="stretch",
             )

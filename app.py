@@ -277,7 +277,7 @@ def get_pdf_page_count(document_name):
 
 def render_pdf_page(document_name, page_number):
     """
-    Renders one PDF page and removes excessive white margins.
+    Renders one PDF page and trims the blank top margin.
     """
 
     pdf_path = os.path.join(
@@ -314,7 +314,6 @@ def render_pdf_page(document_name, page_number):
                 alpha=False
             )
 
-            # Convert the rendered page into a PIL image
             from PIL import Image
             import io
 
@@ -324,62 +323,59 @@ def render_pdf_page(document_name, page_number):
                 )
             ).convert("RGB")
 
-            # ------------------------------------------------
-            # Remove white space around the page
-            # ------------------------------------------------
-
+            width, height = image.size
             pixels = image.load()
 
-            width, height = image.size
-
-            # Find the first row that contains
-            # something that isn't almost pure white.
-            top = 0
+            # Find where actual page content begins.
+            # Use a high threshold so light-gray/near-white
+            # backgrounds are treated as blank.
+            top = height
 
             for y in range(height):
 
-                found_content = False
+                content_found = False
 
                 for x in range(
                     0,
                     width,
-                    5
+                    3
                 ):
 
                     r, g, b = pixels[x, y]
 
+                    # Anything noticeably different from white
+                    # counts as content.
                     if (
-                        r < 245
-                        or g < 245
-                        or b < 245
+                        r < 252
+                        or g < 252
+                        or b < 252
                     ):
-
-                        found_content = True
+                        content_found = True
                         break
 
-                if found_content:
+                if content_found:
+
                     top = y
                     break
 
-            # Only remove the top whitespace.
-            # Keep a small margin.
-            crop_margin = 8
+            # Only crop if a blank area was actually found.
+            if top > 0 and top < height:
 
-            top = max(
-                0,
-                top - crop_margin
-            )
-
-            image = image.crop(
-                (
+                # Keep a tiny margin above the content.
+                top = max(
                     0,
-                    top,
-                    width,
-                    height
+                    top - 5
                 )
-            )
 
-            # Convert back to PNG bytes
+                image = image.crop(
+                    (
+                        0,
+                        top,
+                        width,
+                        height
+                    )
+                )
+
             output = io.BytesIO()
 
             image.save(
@@ -389,7 +385,12 @@ def render_pdf_page(document_name, page_number):
 
             return output.getvalue()
 
-    except Exception:
+    except Exception as error:
+
+        print(
+            f"PDF rendering error: {error}"
+        )
+
         return None
 
 

@@ -934,18 +934,6 @@ with chat_column:
             st.session_state.chat_history
         ):
 
-            if (
-                message_index > 0
-                and message["role"] == "user"
-                and st.session_state.chat_history[
-                    message_index - 1
-                ]["role"] == "assistant"
-            ):
-                st.markdown(
-                    "<div style='height: 8px'></div>",
-                    unsafe_allow_html=True,
-                )
-
             with st.chat_message(
                 message["role"]
             ):

@@ -93,28 +93,5 @@
             ]
         }
     ],
-    "948ee388d5ce73a8329a06ad2185ed2b": [
-        {
-            "role": "user",
-            "content": "What is horizontal scaling?"
-        },
-        {
-            "role": "assistant",
-            "content": "Horizontal scaling, also known as sharding, is the practice of adding more servers to a system to scale it. It involves separating large databases into smaller, more easily managed parts called shards, and allocating user data to a database server based on user IDs. This allows for efficient and even distribution of requests and data across multiple servers, which can help improve the overall performance and availability of the system.",
-            "sources": [
-                {
-                    "document": "System Design Interview by Alex Xu.pdf",
-                    "page": 9
-                },
-                {
-                    "document": "System Design Interview by Alex Xu.pdf",
-                    "page": 71
-                },
-                {
-                    "document": "System Design Interview by Alex Xu.pdf",
-                    "page": 28
-                }
-            ]
-        }
-    ]
+    "948ee388d5ce73a8329a06ad2185ed2b": []
 }

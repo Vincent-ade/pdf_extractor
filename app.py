@@ -929,6 +929,36 @@ with chat_column:
 
     with qa_tab:
 
+        if not st.session_state.chat_history:
+
+            st.markdown(
+                """<div style="
+                    text-align: center;
+                    padding: 4rem 1rem 2rem 1rem;
+                ">
+                    <div style="
+                        font-size: 2.5rem;
+                        margin-bottom: 0.75rem;
+                    ">💬</div>
+
+                    <div style="
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        margin-bottom: 0.4rem;
+                    ">
+                        Ask your documents
+                    </div>
+
+                    <div style="
+                        color: #6b7280;
+                        font-size: 0.9rem;
+                    ">
+                        Ask a question about the selected PDF to get started.
+                    </div>
+                </div>""",
+                unsafe_allow_html=True,
+            )
+
         # Existing messages
         for message_index, message in enumerate(
             st.session_state.chat_history

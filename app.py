@@ -549,8 +549,11 @@ def show_source(source, key):
     Displays a compact source item.
     """
 
-    document = source["document"]
-    page = source["page"]
+    document = source.get("document")
+    page = source.get("page")
+
+    if not document or not page:
+        return
 
     col1, col2 = st.columns(
         [4, 1],
@@ -693,6 +696,31 @@ with st.sidebar:
     st.markdown(
         "### ⚙️ Workspace"
     )
+
+    if st.session_state.chat_history:
+
+        if st.button(
+            "＋ New chat",
+            width="stretch",
+        ):
+
+            st.session_state.chat_history = []
+
+            workspace_key = (
+                st.session_state.chat_workspace_key
+            )
+
+            if workspace_key:
+
+                chat_histories[
+                    workspace_key
+                ] = []
+
+                save_chat_histories(
+                    chat_histories
+                )
+
+            st.rerun()
 
     if selected_pdfs:
 
@@ -970,6 +998,8 @@ with chat_column:
             if previous_messages:
 
                 try:
+
+                    recent_messages = previous_messages[-6:]
 
                     search_question = (
                         rewrite_followup_question(

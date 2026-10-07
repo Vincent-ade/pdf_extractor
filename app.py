@@ -994,15 +994,21 @@ with chat_column:
         )
 
 
-        if not generation_failed:
+        if question:
+            generation_failed = False
+            answer = ""
+            sources = []
 
-            st.session_state.chat_history.append(
-                {
-                    "role": "assistant",
-                    "content": answer,
-                    "sources": sources,
-                }
-            )
+            # Add user message
+            if not generation_failed:
+
+                st.session_state.chat_history.append(
+                    {
+                        "role": "assistant",
+                        "content": answer,
+                        "sources": sources,
+                    }
+                )
 
 
             with st.chat_message("user"):

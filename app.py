@@ -735,6 +735,107 @@ with st.sidebar:
     # PROCESS
     # ========================================================
 
+    if selected_pdfs:
+        st.caption(
+            f"{len(selected_pdfs)} document(s) selected"
+        )
+
+        if st.button(
+            "Process documents",
+            type="primary",
+            width="stretch",
+        ):
+
+            all_chunks = []
+            document_names = []
+
+            progress = st.progress(0)
+
+            total = len(selected_pdfs)
+
+            for index, document_name in enumerate(
+                selected_pdfs
+            ):
+
+                pdf_path = os.path.join(
+                    PDF_FOLDER,
+                    document_name
+                )
+
+                try:
+
+                    chunks = process_pdf(
+                        pdf_path
+                    )
+
+                    all_chunks.extend(
+                        chunks
+                    )
+
+                    document_names.append(
+                        document_name
+                    )
+
+                except Exception as error:
+
+                    st.error(
+                        f"Could not process "
+                        f"{document_name}: {error}"
+                    )
+
+                progress.progress(
+                    (index + 1) / total
+                )
+
+
+            st.session_state.chunks = (
+                all_chunks
+            )
+
+            st.session_state.document_names = (
+                document_names
+            )
+
+
+            # Set first document as preview
+            if document_names:
+
+                st.session_state.pdf_preview_document = (
+                    document_names[0]
+                )
+
+                st.session_state.pdf_preview_page = 1
+
+
+            # Load workspace history
+            workspace_key = get_workspace_key(
+                document_names
+            )
+
+            st.session_state.chat_workspace_key = (
+                workspace_key
+            )
+
+            st.session_state.chat_history = (
+                chat_histories.get(
+                    workspace_key,
+                    []
+                )
+            )
+
+            st.session_state.summary = ""
+
+
+            st.success(
+                f"{len(document_names)} "
+                f"document(s) ready."
+            )
+
+    else:
+        st.caption(
+            "Select at least one PDF to begin."
+        )
+
     # st.markdown(
     #     "### ⚙️ Workspace"
     # )
@@ -904,108 +1005,7 @@ with st.sidebar:
     #         st.session_state.chat_history = []
     #         st.rerun()
 
-    if selected_pdfs:
-
-        st.caption(
-            f"{len(selected_pdfs)} document(s) selected"
-        )
-
-        if st.button(
-            "Process documents",
-            type="primary",
-            width="stretch",
-        ):
-
-            all_chunks = []
-            document_names = []
-
-            progress = st.progress(0)
-
-            total = len(selected_pdfs)
-
-            for index, document_name in enumerate(
-                selected_pdfs
-            ):
-
-                pdf_path = os.path.join(
-                    PDF_FOLDER,
-                    document_name
-                )
-
-                try:
-
-                    chunks = process_pdf(
-                        pdf_path
-                    )
-
-                    all_chunks.extend(
-                        chunks
-                    )
-
-                    document_names.append(
-                        document_name
-                    )
-
-                except Exception as error:
-
-                    st.error(
-                        f"Could not process "
-                        f"{document_name}: {error}"
-                    )
-
-                progress.progress(
-                    (index + 1) / total
-                )
-
-
-            st.session_state.chunks = (
-                all_chunks
-            )
-
-            st.session_state.document_names = (
-                document_names
-            )
-
-
-            # Set first document as preview
-            if document_names:
-
-                st.session_state.pdf_preview_document = (
-                    document_names[0]
-                )
-
-                st.session_state.pdf_preview_page = 1
-
-
-            # Load workspace history
-            workspace_key = get_workspace_key(
-                document_names
-            )
-
-            st.session_state.chat_workspace_key = (
-                workspace_key
-            )
-
-            st.session_state.chat_history = (
-                chat_histories.get(
-                    workspace_key,
-                    []
-                )
-            )
-
-            st.session_state.summary = ""
-
-
-            st.success(
-                f"{len(document_names)} "
-                f"document(s) ready."
-            )
-
-    else:
-
-        st.caption(
-            "Select at least one PDF to begin."
-        )
+    
 
 
     # ========================================================

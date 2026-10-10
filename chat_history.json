@@ -317,5 +317,59 @@
             }
         ],
         "workspace_key": "948ee388d5ce73a8329a06ad2185ed2b"
+    },
+    "e6332712e326b57bce333de749a61040": [
+        {
+            "role": "assistant",
+            "content": "",
+            "sources": []
+        },
+        {
+            "role": "assistant",
+            "content": "Sorry, I couldn't generate an answer right now. Please make sure Ollama is running and try again.",
+            "sources": [
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 2
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 2
+                },
+                {
+                    "document": "sample-doc.pdf",
+                    "page": 1
+                }
+            ]
+        }
+    ],
+    "1231b32a-9a9b-45a1-b9fa-d845277d8e3e": {
+        "title": "New chat",
+        "messages": [
+            {
+                "role": "assistant",
+                "content": "",
+                "sources": []
+            },
+            {
+                "role": "assistant",
+                "content": "Sorry, I couldn't generate an answer right now. Please make sure Ollama is running and try again.",
+                "sources": [
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 2
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 2
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    }
+                ]
+            }
+        ],
+        "workspace_key": "e6332712e326b57bce333de749a61040"
     }
 }

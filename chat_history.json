@@ -19,78 +19,303 @@
             ]
         }
     ],
-    "63abec9eb788e86315e74e4d46068ea0d008e4757e29037e381089295f126103": [
+    "63abec9eb788e86315e74e4d46068ea0d008e4757e29037e381089295f126103": {
+        "title": "New chat",
+        "messages": [
+            {
+                "question": "What is the first point given in the PDF?",
+                "answer": "The first point given in the PDF is:\n\n1. God Is a Rewarder by His Nature: God does not merely give rewards occasionally; rewarding faithfulness is part of His character. Heb. 11:6 declares that He rewards those who diligently seek Him. Abraham experienced God's reward through obedience Gen. 22:15–18, while Solomon received wisdom, riches and honour because his request pleased the Lord 1 Kgs. 3:10–13. Since God never changes Mal. 3:6, believers today can confidently serve Him knowing that every act of genuine faith and obedience will be rewarded in His perfect time.",
+                "sources": [
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 2
+                    }
+                ]
+            },
+            {
+                "question": "Explain it in simple terms.",
+                "answer": "God is a Rewarder because it's part of His character. He rewards people who trust Him, obey His Word, and remain faithful. This means that God looks at the heart, not just what people do on the outside.",
+                "sources": [
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 2
+                    }
+                ]
+            },
+            {
+                "question": "What is the second point?",
+                "answer": "The second point given in the PDF is:\n\n2. God Rewards According to His Righteous Standards: God's reward system is based on righteousness rather than outward appearance or human recognition. While people judge what they see, God examines the heart and the motives behind every action 1 Sam. 16:7. Jesus taught that giving, praying, and fasting done to impress others receive only human applause, but those done sincerely before God receive His reward Matt. 6:1–6, 16–18. Therefore, believers should seek God's approval above man's, knowing that He faithfully rewards obedience, sincerity, and faithfulness Rom. 2:6–7.",
+                "sources": [
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    }
+                ]
+            },
+            {
+                "question": "How is it different from the first one?",
+                "answer": "The first and second points are related but differ in their focus. The first point (God Is a Rewarder by His Nature) emphasizes that God rewards faithfulness as part of His character, indicating that He has a nature to reward those who trust Him and obey His Word. The second point (God Rewards According to His Righteous Standards) focuses on the fact that God's reward system is based on righteousness rather than outward appearance or human recognition. In other words, God rewards people based on their inner motivations and actions, not just what they do on the outside.",
+                "sources": [
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    },
+                    {
+                        "document": "sample-doc.pdf",
+                        "page": 1
+                    }
+                ]
+            }
+        ],
+        "workspace_key": ""
+    },
+    "948ee388d5ce73a8329a06ad2185ed2b": [
         {
-            "question": "What is the first point given in the PDF?",
-            "answer": "The first point given in the PDF is:\n\n1. God Is a Rewarder by His Nature: God does not merely give rewards occasionally; rewarding faithfulness is part of His character. Heb. 11:6 declares that He rewards those who diligently seek Him. Abraham experienced God's reward through obedience Gen. 22:15–18, while Solomon received wisdom, riches and honour because his request pleased the Lord 1 Kgs. 3:10–13. Since God never changes Mal. 3:6, believers today can confidently serve Him knowing that every act of genuine faith and obedience will be rewarded in His perfect time.",
+            "role": "assistant",
+            "content": "",
+            "sources": []
+        },
+        {
+            "role": "assistant",
+            "content": "Unfortunately, I couldn't find any information in this PDF that directly answers your question. Can you please provide more context or clarify what you are looking for? I'll do my best to help.",
             "sources": [
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 199
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 121
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 2
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 119
                 }
             ]
         },
         {
-            "question": "Explain it in simple terms.",
-            "answer": "God is a Rewarder because it's part of His character. He rewards people who trust Him, obey His Word, and remain faithful. This means that God looks at the heart, not just what people do on the outside.",
+            "role": "assistant",
+            "content": "",
+            "sources": []
+        },
+        {
+            "role": "assistant",
+            "content": "Traffic redirection refers to the process of routing internet traffic to a different server or data center based on certain conditions, such as location or network availability. This is often used to ensure that users have a stable and efficient internet experience, even in the event of an outage or other issues.",
             "sources": [
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 122
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 121
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 2
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 23
                 }
             ]
         },
         {
-            "question": "What is the second point?",
-            "answer": "The second point given in the PDF is:\n\n2. God Rewards According to His Righteous Standards: God's reward system is based on righteousness rather than outward appearance or human recognition. While people judge what they see, God examines the heart and the motives behind every action 1 Sam. 16:7. Jesus taught that giving, praying, and fasting done to impress others receive only human applause, but those done sincerely before God receive His reward Matt. 6:1–6, 16–18. Therefore, believers should seek God's approval above man's, knowing that He faithfully rewards obedience, sincerity, and faithfulness Rom. 2:6–7.",
+            "role": "assistant",
+            "content": "",
+            "sources": []
+        },
+        {
+            "role": "assistant",
+            "content": "I got this definition from page 38 of the PDF document \"System Design Interview by Alex Xu\".",
             "sources": [
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 64
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 199
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 38
                 }
             ]
         },
         {
-            "question": "How is it different from the first one?",
-            "answer": "The first and second points are related but differ in their focus. The first point (God Is a Rewarder by His Nature) emphasizes that God rewards faithfulness as part of His character, indicating that He has a nature to reward those who trust Him and obey His Word. The second point (God Rewards According to His Righteous Standards) focuses on the fact that God's reward system is based on righteousness rather than outward appearance or human recognition. In other words, God rewards people based on their inner motivations and actions, not just what they do on the outside.",
+            "role": "assistant",
+            "content": "",
+            "sources": []
+        },
+        {
+            "role": "assistant",
+            "content": "I couldn't find enough information in the document to answer that.",
             "sources": [
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 122
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 121
                 },
                 {
-                    "document": "sample-doc.pdf",
-                    "page": 1
+                    "document": "System Design Interview by Alex Xu.pdf",
+                    "page": 122
                 }
             ]
         }
-    ]
+    ],
+    "6a6b120c-1b97-49ba-abc6-1178bfadb275": {
+        "title": "New chat",
+        "messages": [
+            {
+                "role": "assistant",
+                "content": "",
+                "sources": []
+            },
+            {
+                "role": "assistant",
+                "content": "Unfortunately, I couldn't find any information in this PDF that directly answers your question. Can you please provide more context or clarify what you are looking for? I'll do my best to help.",
+                "sources": [
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 199
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 121
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 119
+                    }
+                ]
+            }
+        ],
+        "workspace_key": "948ee388d5ce73a8329a06ad2185ed2b"
+    },
+    "b10efef2-d321-4530-9f21-4050e46d76d6": {
+        "title": "New chat",
+        "messages": [
+            {
+                "role": "assistant",
+                "content": "",
+                "sources": []
+            },
+            {
+                "role": "assistant",
+                "content": "Unfortunately, I couldn't find any information in this PDF that directly answers your question. Can you please provide more context or clarify what you are looking for? I'll do my best to help.",
+                "sources": [
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 199
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 121
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 119
+                    }
+                ]
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "sources": []
+            },
+            {
+                "role": "assistant",
+                "content": "Traffic redirection refers to the process of routing internet traffic to a different server or data center based on certain conditions, such as location or network availability. This is often used to ensure that users have a stable and efficient internet experience, even in the event of an outage or other issues.",
+                "sources": [
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 122
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 121
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 23
+                    }
+                ]
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "sources": []
+            },
+            {
+                "role": "assistant",
+                "content": "I got this definition from page 38 of the PDF document \"System Design Interview by Alex Xu\".",
+                "sources": [
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 64
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 199
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 38
+                    }
+                ]
+            },
+            {
+                "role": "assistant",
+                "content": "",
+                "sources": []
+            },
+            {
+                "role": "assistant",
+                "content": "I couldn't find enough information in the document to answer that.",
+                "sources": [
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 122
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 121
+                    },
+                    {
+                        "document": "System Design Interview by Alex Xu.pdf",
+                        "page": 122
+                    }
+                ]
+            }
+        ],
+        "workspace_key": "948ee388d5ce73a8329a06ad2185ed2b"
+    }
 }

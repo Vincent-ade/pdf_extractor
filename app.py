@@ -1,5 +1,6 @@
 import os
 import json
+import uuid
 import hashlib
 import streamlit as st
 import pymupdf
@@ -192,6 +193,44 @@ def save_chat_histories(histories):
             indent=4,
             ensure_ascii=False
         )
+
+
+def create_chat_id():
+    return str(uuid.uuid4())
+
+
+def create_chat_title(messages):
+    for message in messages:
+        if message.get("role") == "user":
+            title = message.get("content", "").strip()
+            if title:
+                return title[:40] + ("..." if len(title) > 40 else "")
+
+    return "New chat"
+
+
+
+def save_current_chat():
+    messages = st.session_state.get("chat_history", [])
+
+    if not messages:
+        return
+
+    chat_id = st.session_state.get("active_chat_id")
+
+    if not chat_id:
+        chat_id = create_chat_id()
+        st.session_state.active_chat_id = chat_id
+
+    chat_histories[chat_id] = {
+        "title": create_chat_title(messages),
+        "messages": messages.copy(),
+        "workspace_key": st.session_state.get(
+            "chat_workspace_key"
+        ),
+    }
+
+    save_chat_histories(chat_histories)
 
 
 def get_cache_path(pdf_path):
@@ -594,6 +633,9 @@ def show_source(source, key):
 
 chat_histories = load_chat_histories()
 
+if "active_chat_id" not in st.session_state:
+    st.session_state.active_chat_id = None
+
 
 # ============================================================
 # SIDEBAR
@@ -693,34 +735,174 @@ with st.sidebar:
     # PROCESS
     # ========================================================
 
-    st.markdown(
-        "### ⚙️ Workspace"
-    )
+    # st.markdown(
+    #     "### ⚙️ Workspace"
+    # )
 
-    if st.session_state.chat_history:
+    # if st.session_state.chat_history:
+        
+    #     if st.button("＋ New chat", width="stretch"):
+    #         save_current_chat()
+
+    #         st.session_state.active_chat_id = create_chat_id()
+    #         st.session_state.chat_history = []
+    #         st.session_state.answer = ""
+    #         st.session_state.sources = []
+
+    #         st.rerun()
+
+    
+    # ========================================================
+    # CHAT HISTORY
+    # ========================================================
+
+    st.divider()
+    st.markdown("### 💬 Chat")
+
+    if st.button(
+        "＋ New chat",
+        key="sidebar_new_chat",
+        width="stretch",
+    ):
+        save_current_chat()
+
+        st.session_state.active_chat_id = create_chat_id()
+        st.session_state.chat_history = []
+        st.session_state.answer = ""
+        st.session_state.sources = []
+        st.session_state.summary = ""
+
+        st.rerun()
+
+    for saved_chat_id, chat_data in reversed(
+        list(chat_histories.items())
+    ):
+        if isinstance(chat_data, dict):
+            messages = chat_data.get("messages", [])
+            title = chat_data.get("title", "")
+        elif isinstance(chat_data, list):
+            messages = chat_data
+            title = create_chat_title(messages)
+        else:
+            continue
+
+        if not messages:
+            continue
+
+        if not title or title == "New chat":
+            title = create_chat_title(messages)
+
+        if title == "New chat":
+            continue
 
         if st.button(
-            "＋ New chat",
+            f"💬 {title}",
+            key=f"open_chat_{saved_chat_id}",
             width="stretch",
+            type=(
+                "primary"
+                if saved_chat_id
+                == st.session_state.active_chat_id
+                else "secondary"
+            ),
         ):
+            save_current_chat()
 
-            st.session_state.chat_history = []
+            st.session_state.active_chat_id = saved_chat_id
+            st.session_state.chat_history = messages.copy()
 
-            workspace_key = (
-                st.session_state.chat_workspace_key
-            )
-
-            if workspace_key:
-
-                chat_histories[
-                    workspace_key
-                ] = []
-
-                save_chat_histories(
-                    chat_histories
+            if isinstance(chat_data, dict):
+                st.session_state.chat_workspace_key = (
+                    chat_data.get("workspace_key")
                 )
 
+            st.session_state.answer = ""
+            st.session_state.sources = []
+
             st.rerun()
+
+
+
+    
+# st.markdown("### 💬 Chat history")
+
+# if st.button(
+#     "＋ New chat",
+#     width="stretch",
+#     key="sidebar_new_chat",
+# ):
+#     save_current_chat()
+
+#     st.session_state.active_chat_id = create_chat_id()
+#     st.session_state.chat_history = []
+#     st.session_state.answer = ""
+#     st.session_state.sources = []
+#     st.session_state.summary = ""
+
+#     st.rerun()
+
+# for saved_chat_id, chat_data in reversed(
+#     list(chat_histories.items())
+# ):
+#     if isinstance(chat_data, dict):
+#         messages = chat_data.get("messages", [])
+#         title = chat_data.get("title", "")
+#     elif isinstance(chat_data, list):
+#         messages = chat_data
+#         title = create_chat_title(messages)
+#     else:
+#         continue
+
+#     if not messages:
+#         continue
+
+#     if not title or title == "New chat":
+#         title = create_chat_title(messages)
+
+#     if title == "New chat":
+#         continue
+
+#     if st.button(
+#         f"💬 {title}",
+#         key=f"history_{saved_chat_id}",
+#         width="stretch",
+#         type=(
+#             "primary"
+#             if saved_chat_id
+#             == st.session_state.active_chat_id
+#             else "secondary"
+#         ),
+#     ):
+#         save_current_chat()
+
+#         st.session_state.active_chat_id = saved_chat_id
+#         st.session_state.chat_history = messages.copy()
+
+#         if isinstance(chat_data, dict):
+#             st.session_state.chat_workspace_key = (
+#                 chat_data.get("workspace_key")
+#             )
+
+#         st.session_state.answer = ""
+#         st.session_state.sources = []
+
+#         st.rerun()
+
+            
+    # if st.session_state.chat_history:
+    #     if st.button("＋ New chat", width="stretch"):
+
+    #         workspace_key = st.session_state.chat_workspace_key
+
+    #         if workspace_key:
+    #             chat_histories[workspace_key] = (
+    #                 st.session_state.chat_history.copy()
+    #             )
+
+    #             save_chat_histories(chat_histories)
+
+    #         st.session_state.chat_history = []
+    #         st.rerun()
 
     if selected_pdfs:
 
@@ -830,21 +1012,21 @@ with st.sidebar:
     # CURRENT DOCUMENTS
     # ========================================================
 
-    if st.session_state.document_names:
+    # if st.session_state.document_names:
 
-        st.divider()
+    #     st.divider()
 
-        st.markdown(
-            "### 📖 Current workspace"
-        )
+    #     st.markdown(
+    #         "### 📖 Current workspace"
+    #     )
 
-        for document in (
-            st.session_state.document_names
-        ):
+    #     for document in (
+    #         st.session_state.document_names
+    #     ):
 
-            st.caption(
-                f"📄 {document}"
-            )
+    #         st.caption(
+    #             f"📄 {document}"
+    #         )
 
 
 # ============================================================
